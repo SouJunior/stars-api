@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Optional
 
 
 class ItemBase(BaseModel):
@@ -44,17 +45,21 @@ class JobTitle(BaseModel):
 
 class VolunteerBase(BaseModel):
     name: str
-    email: str
+    # email: str
     is_active: bool
 
 class VolunteerCreate(VolunteerBase):
     name: str
     email: str
+    masked_email: Optional[str] = None
     is_active: bool
     jobtitle_id: list[JobTitle] = []
 
 class Volunteer(VolunteerBase):
     id: int
+    jobtitle_id: int 
+    masked_email: Optional[str] = None
+
 
     class Config:
         orm_mode = True

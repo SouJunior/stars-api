@@ -32,7 +32,7 @@ class JobTitle(Base):
     title = Column(String, index=True)
     is_active = Column(Boolean, default=True)
 
-    # volunteers = relationship("Volunteer", back_populates="jobtitle")
+    volunteers = relationship("Volunteer", back_populates="jobtitle")
 
 class Volunteer(Base):
     __tablename__ = "volunteer"
@@ -43,4 +43,4 @@ class Volunteer(Base):
     is_active = Column(Boolean, default=True)
     jobtitle_id = Column(Integer, ForeignKey("jobtitle.id"))
 
-    # jobtitle = relationship("JobTitle", back_populates="jobtitle")
+    jobtitle = relationship("JobTitle", back_populates="volunteers")
