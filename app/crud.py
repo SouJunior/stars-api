@@ -51,6 +51,19 @@ def get_volunteers(db: Session, skip: int = 0, limit: int = 100):
     ).all()
     # return db.query(models.Volunteer).offset(skip).limit(limit).all()
 
+
+def get_volunteers_by_email(db: Session, skip: int = 0, limit: int = 100, email: str = ''):
+    return db.query(
+    models.Volunteer.id,
+    models.Volunteer.name,
+    func.replace(
+        models.Volunteer.email, 
+        func.substr(models.Volunteer.email, 1, func.instr(models.Volunteer.email, '@') - 1),
+        '***').label("masked_email"),
+    models.Volunteer.is_active,
+    models.Volunteer.jobtitle_id,
+    ).filter(models.Volunteer.email == email).first()
+
 def create_volunteer(db: Session, volunteer: schemas.Volunteer, jobtitle_id: int):
     # print(volunteer.jobtitle_id[0].id)
     # return

@@ -19,12 +19,6 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-# configuration = sib_api_v3_sdk.Configuration()
-# configuration.api_key['api-key'] = os.getenv('BREVO_API_KEY')
-
-# api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(configuration))
-# send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(to=[{"email":"wouerner@gmail.com","name":"John Doe"}], template_id=1, params={"name": "John", "surname": "Doe"}, headers={"X-Mailin-custom": "custom_header_1:custom_value_1|custom_header_2:custom_value_2|custom_header_3:custom_value_3", "charset": "iso-8859-1"}) # SendSmtpEmail | Values to send a transactional email
-
 # Dependency
 def get_db():
     db = SessionLocal()
@@ -68,22 +62,22 @@ def read_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     items = crud.get_items(db, skip=skip, limit=limit)
     return items
 
-@app.get("/email")
-def read_items():
-    print("Email: ", )
-    try: 
-        print("Email: ", os.getenv('BREVO_API_KEY'))
-        return
-        # api_response = api_instance.get_account()
-        # pprint(api_response)
-        api_response = api_instance.send_transac_email(send_smtp_email)
-        pprint(api_response)
+# @app.get("/email")
+# def read_items():
+#     print("Email: ", )
+#     try: 
+#         print("Email: ", os.getenv('BREVO_API_KEY'))
+#         return
+#         # api_response = api_instance.get_account()
+#         # pprint(api_response)
+#         api_response = api_instance.send_transac_email(send_smtp_email)
+#         pprint(api_response)
 
 
-    except ApiException as e:
-        print("Exception when calling AccountApi->get_account: %s\n" % e)
+#     except ApiException as e:
+#         print("Exception when calling AccountApi->get_account: %s\n" % e)
 
-    return 
+#     return 
 
 # volunteer
 @app.get("/volunteers/", response_model=list[schemas.Volunteer])
@@ -92,6 +86,14 @@ def get_volunteers(skip: int = 0, limit: int = 100, db: Session = Depends(get_db
     if db_volunteers is None:
         raise HTTPException(status_code=404, detail="Volunteer not found")
     return db_volunteers
+
+# volunteer by email
+@app.get("/volunteer/{email}", response_model=schemas.Volunteer)
+def get_volunteers(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), email: str = ''):
+    db_volunteer = crud.get_volunteer_by_email(db, email=email)
+    if db_volunteer is None:
+        raise HTTPException(status_code=404, detail="Volunteer not found")
+    return db_volunteer
 
 @app.post("/volunteer", response_model=schemas.Volunteer)
 def create_volunteer(volunteer: schemas.VolunteerCreate, db: Session = Depends(get_db)):
