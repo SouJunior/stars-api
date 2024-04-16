@@ -45,6 +45,7 @@ class JobTitle(BaseModel):
 
 class VolunteerBase(BaseModel):
     name: str
+    linkedin: str
     # email: str
     is_active: bool
 

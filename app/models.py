@@ -39,6 +39,7 @@ class Volunteer(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String, index=True)
+    linkedin = Column(String, index=True)
     email = Column(String, index=True)
     is_active = Column(Boolean, default=True)
     jobtitle_id = Column(Integer, ForeignKey("jobtitle.id"))

@@ -71,6 +71,7 @@ def create_volunteer(db: Session, volunteer: schemas.Volunteer, jobtitle_id: int
     db_volunteer = models.Volunteer(
             name=volunteer.name,
             email=volunteer.email,
+            linkedin=volunteer.linkedin,
             is_active=volunteer.is_active,
             jobtitle_id=jobtitle_id
                     )
