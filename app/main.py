@@ -9,6 +9,7 @@ import sib_api_v3_sdk
 from sib_api_v3_sdk.rest import ApiException
 from pprint import pprint
 from dotenv import load_dotenv
+from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
@@ -18,6 +19,21 @@ from .database import SessionLocal, engine
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
+origins = [
+    "http://localhost",
+    "http://localhost:5173",
+    "http://localhost:8080",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # Dependency
 def get_db():
@@ -101,7 +117,7 @@ def create_volunteer(volunteer: schemas.VolunteerCreate, db: Session = Depends(g
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
 
-    vol =  crud.create_volunteer(db=db, volunteer=volunteer, jobtitle_id=volunteer.jobtitle_id[0].id)
+    vol =  crud.create_volunteer(db=db, volunteer=volunteer, jobtitle_id=volunteer.jobtitle_id)
     # send_email(volunteer.email, volunteer.name)
     return vol
 

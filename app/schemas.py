@@ -52,8 +52,8 @@ class VolunteerCreate(VolunteerBase):
     name: str
     email: str
     masked_email: Optional[str] = None
-    is_active: bool
-    jobtitle_id: list[JobTitle] = []
+    is_active: Optional[bool] = True
+    jobtitle_id: int 
 
 class Volunteer(VolunteerBase):
     id: int
