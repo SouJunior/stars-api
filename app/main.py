@@ -137,7 +137,7 @@ def send_email(email, name):
 
         api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(configuration))
 
-        send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(to=[{"email": email,"name": name}], template_id=1, params={"name": "John", "surname": "Doe"}, headers={"X-Mailin-custom": "custom_header_1:custom_value_1|custom_header_2:custom_value_2|custom_header_3:custom_value_3", "charset": "iso-8859-1"}) # SendSmtpEmail | Values to send a transactional email
+        send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(to=[{"email": email,"name": name}], template_id=9, params={"name": name, "email": email}, headers={"X-Mailin-custom": "custom_header_1:custom_value_1|custom_header_2:custom_value_2|custom_header_3:custom_value_3", "charset": "iso-8859-1"}) # SendSmtpEmail | Values to send a transactional email
 
         print("Email: ", os.getenv('BREVO_API_KEY'))
         api_response = api_instance.send_transac_email(send_smtp_email)
