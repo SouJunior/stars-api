@@ -38,7 +38,7 @@
   
 
 ### Comandos para criar os containers 
-docker-compose up
+docker-compose up 
 docker-compose ps
 
 
@@ -48,6 +48,9 @@ docker-compose stop
 docker-compose start 
 docker-compose restart
 
+
+### Porta e swagger
+http://localhost:8000/docs
 
 
 ### Parar o servidor 
