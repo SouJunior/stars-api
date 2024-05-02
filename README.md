@@ -1,6 +1,7 @@
 # stars-api
 
 # Documentação 
+## Este projeto é um aplicativo Python com FastApi com todo o ambiente de execução encapsulado em Docker.
 
 ### ambiente virtual 
   python3 -m venv env
