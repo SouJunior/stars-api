@@ -25,6 +25,7 @@
 
 #### Configurações de vulnerabilidade da imagem sugerida pelo docker 
   docker scout cves local://backoffice:latest
+  
   docker scout recommendations local://backoffice:latest
 
 
@@ -39,13 +40,16 @@
 
 ### Comandos para criar os containers 
 docker-compose up 
+
 docker-compose ps
 
 
 
 ### Comandos docker
 docker-compose stop
+
 docker-compose start 
+
 docker-compose restart
 
 
