@@ -20,7 +20,7 @@ class Item(Base):
 
     id = Column(Integer, primary_key=True)
     title = Column(String(255), index=True)
-    description = Column(Text(3000), index=True)
+    description = Column(String(3000), index=True)
     owner_id = Column(Integer, ForeignKey("users.id"))
 
     owner = relationship("User", back_populates="items")
@@ -39,7 +39,7 @@ class Volunteer(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(45), index=True)
-    linkedin = Column(String(3072), index=True)
+    linkedin = Column(String(3000), index=True)
     email = Column(String(320), index=True)
     is_active = Column(Boolean, default=True)
     jobtitle_id = Column(Integer, ForeignKey("jobtitle.id"))

@@ -24,6 +24,7 @@ origins = [
     "http://localhost",
     "http://localhost:5173",
     "http://localhost:8080",
+    "https://stars.soujunior.tech",
 ]
 
 app.add_middleware(
@@ -118,7 +119,7 @@ def create_volunteer(volunteer: schemas.VolunteerCreate, db: Session = Depends(g
         raise HTTPException(status_code=400, detail="Email already registered")
 
     vol =  crud.create_volunteer(db=db, volunteer=volunteer, jobtitle_id=volunteer.jobtitle_id)
-    # send_email(volunteer.email, volunteer.name)
+    send_email(volunteer.email, volunteer.name)
     return vol
 
 @app.get("/jobtitles/", response_model=list[schemas.JobTitle])
