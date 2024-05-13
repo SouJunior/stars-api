@@ -25,6 +25,7 @@ class Item(Base):
 
     owner = relationship("User", back_populates="items")
 
+
 class JobTitle(Base):
     __tablename__ = "jobtitle"
 
@@ -33,6 +34,7 @@ class JobTitle(Base):
     is_active = Column(Boolean, default=True)
 
     volunteers = relationship("Volunteer", back_populates="jobtitle")
+
 
 class Volunteer(Base):
     __tablename__ = "volunteer"
