@@ -42,7 +42,7 @@ def get_volunteers(db: Session, skip: int = 0, limit: int = 100):
     models.Volunteer.id,
     models.Volunteer.name,
     func.replace(
-        models.Volunteer.email, 
+        models.Volunteer.email,
         func.substr(models.Volunteer.email, 1, func.instr(models.Volunteer.email, '@') - 1),
         '***').label("masked_email"),
     models.Volunteer.is_active,
