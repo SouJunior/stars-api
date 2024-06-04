@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 load_dotenv()
 
 from . import crud, models, schemas
-from .database import SessionLocal, engine
+from app.database import SessionLocal, engine
 
 models.Base.metadata.create_all(bind=engine)
 

@@ -59,3 +59,9 @@ http://localhost:8000/docs
 
 ### Parar o servidor 
   docker stop <seu id> 65d05c5e44806478fd97914e8ecdb61a3a1b530686b20640da7c68e5717ec7a3
+
+## Subir containers 
+docker compose up
+
+### Parar containers 
+docker compose down 

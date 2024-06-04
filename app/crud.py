@@ -42,7 +42,7 @@ def get_volunteers(db: Session, skip: int = 0, limit: int = 100):
     models.Volunteer.id,
     models.Volunteer.name,
     func.replace(
-        models.Volunteer.email,
+        models.Volunteer.email, 
         func.substr(models.Volunteer.email, 1, func.instr(models.Volunteer.email, '@') - 1),
         '***').label("masked_email"),
     models.Volunteer.is_active,
@@ -57,7 +57,7 @@ def get_volunteers_by_email(db: Session, skip: int = 0, limit: int = 100, email:
     models.Volunteer.id,
     models.Volunteer.name,
     func.replace(
-        models.Volunteer.email,
+        models.Volunteer.email, 
         func.substr(models.Volunteer.email, 1, func.instr(models.Volunteer.email, '@') - 1),
         '***').label("masked_email"),
     models.Volunteer.is_active,
@@ -86,4 +86,3 @@ def get_jobtitles(db: Session, skip: int = 0, limit: int = 100):
 
 def get_volunteer_by_email(db: Session, email: str):
     return db.query(models.Volunteer).filter(models.Volunteer.email == email).first()
-
