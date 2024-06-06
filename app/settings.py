@@ -1,8 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from dotenv import load_dotenv
-import os
 
-load_dotenv()
 class __Settings(BaseSettings):
     DB_DRIVER: str 
     DB_USERNAME: str 
@@ -11,7 +8,6 @@ class __Settings(BaseSettings):
     DB_PORT: int 
     DB_DATABASE: str 
 
-def get_settings():
-    return __Settings()
+    model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8')
 
-settings =  get_settings()   
+settings = __Settings() # type:ignore

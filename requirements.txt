@@ -19,4 +19,3 @@ uvicorn==0.15.0
 wheel==0.43.0
 mysql-connector-python==8.3.0
 pydantic-settings==2.2.1
-load-dotenv==0.1.0
