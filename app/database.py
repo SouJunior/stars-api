@@ -3,10 +3,10 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from .settings import Settings
+from .settings import settings
+from dotenv import load_dotenv
 
-settings = Settings()
-
+load_dotenv()
 
 SQLALCHEMY_DATABASE_URL = (
     f"{settings.DB_DRIVER}://{settings.DB_USERNAME}:{settings.DB_PASSWORD}"
