@@ -85,5 +85,4 @@ def get_jobtitles(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.JobTitle).offset(skip).limit(limit).all()
 
 def get_volunteer_by_email(db: Session, email: str):
-    return db.query(models.Volunteer).filter(models.Volunteer.email == email).first()   
-
+    return db.query(models.Volunteer).filter(models.Volunteer.email == email).first()

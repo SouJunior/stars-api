@@ -7,13 +7,10 @@ from sqlalchemy.orm import Session
 import sib_api_v3_sdk
 from sib_api_v3_sdk.rest import ApiException
 from pprint import pprint
-from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 
-load_dotenv()
-
 from . import crud, models, schemas
-from .database import SessionLocal, engine
+from app.database import SessionLocal, engine
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -41,7 +38,6 @@ def get_db():
         yield db
     finally:
         db.close()
-
 
 @app.post("/users/", response_model=schemas.User)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
