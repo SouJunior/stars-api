@@ -4,13 +4,17 @@ import os
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
 
-import sib_api_v3_sdk
-from sib_api_v3_sdk.rest import ApiException
+import sib_api_v3_sdk # type:ignore
+from sib_api_v3_sdk.rest import ApiException # type:ignore
 from pprint import pprint
 from fastapi.middleware.cors import CORSMiddleware
 
-from . import crud, models, schemas
+from app import crud, models, schemas
 from app.database import SessionLocal, engine
+
+from app.auth import UserAuth, get_test_user, oauth2_scheme
+from typing import Annotated # type:ignore
+from fastapi import Depends
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -30,6 +34,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Testando Auth2
+from fastapi import Depends, FastAPI
+
+@app.get("/items2/")
+async def read_items(token: str = Depends(oauth2_scheme)):
+    return {"token": token}
+
+@app.get("/users/me")
+async def read_users_me(current_user: Annotated[UserAuth, Depends(get_test_user)]):
+    return current_user
+
+# final Auth2    
 
 # Dependency
 def get_db():
@@ -68,7 +84,7 @@ def create_item_for_user(
     return crud.create_user_item(db=db, item=item, user_id=user_id)
 
 
-@app.get("/items/", response_model=list[schemas.Item])
+@app.get("/items/", response_model=list[schemas.Item]) # type:ignore
 def read_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     items = crud.get_items(db, skip=skip, limit=limit)
     return items
@@ -119,7 +135,7 @@ def create_volunteer(volunteer: schemas.VolunteerCreate, db: Session = Depends(g
         raise HTTPException(status_code=400, detail="Email already registered")
 
     vol = crud.create_volunteer(
-        db=db, volunteer=volunteer, jobtitle_id=volunteer.jobtitle_id
+        db=db, volunteer=volunteer, jobtitle_id=volunteer.jobtitle_id # type:ignore
     )
     # send_email(volunteer.email, volunteer.name)
     return vol

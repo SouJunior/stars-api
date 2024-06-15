@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Union
 
 
 class ItemBase(BaseModel):
@@ -53,7 +53,7 @@ class VolunteerCreate(VolunteerBase):
     name: str
     email: str
     masked_email: Optional[str] = None
-    is_active: Optional[bool] = True
+    is_active: Optional[bool] = True # type:ignore
     jobtitle_id: int
 
 class Volunteer(VolunteerBase):
