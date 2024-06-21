@@ -12,12 +12,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from app import crud, models, schemas
 from app.database import SessionLocal, engine
 
-from app.auth import UserAuth, get_test_user, oauth2_scheme
+from app.auth import UserAuth, get_test_user, oauth2_scheme, UserInDB
 from typing import Annotated # type:ignore
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi import Depends, FastAPI
+from app.models import User
 
 models.Base.metadata.create_all(bind=engine)
+
 
 app = FastAPI()
 
@@ -46,6 +48,20 @@ def get_db():
 
 # Testando Auth2
 
+app.post("/token")
+async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: Session = Depends(get_db)):  
+    user = db.query(User).filter(User.username == form_data.username).first()
+
+    if not user:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    userAuth = UserInDB(**user)
+    hashed_password = db.query(User).filter(User.password == form_data.password).first()
+
+    if not hashed_password == user.hashed_password:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+
+    return {"access_token": user.username, "token_type": "bearer"}
+
 @app.get("/items2/")
 async def read_items(token: str = Depends(oauth2_scheme)):
     return {"token": token}
@@ -53,11 +69,6 @@ async def read_items(token: str = Depends(oauth2_scheme)):
 @app.get("/users/me")
 async def read_users_me(current_user: Annotated[UserAuth, Depends(get_test_user)]):
     return current_user
-
-app.post("/token")
-async def login(form_data: Annotated[OAuth2PasswordRequestForm, db: Depends(get_db)]):
-    #user_dict = db.get(form_data.username)
-    pass
 
 # final Auth2    
 

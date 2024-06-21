@@ -47,7 +47,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authentication credentials")
     return user
 
-async def get_current_activate_user(current_user: Annotated[UserAuth, Depend(get_current_user)],):
+async def get_current_activate_user(current_user: Annotated[UserAuth, Depends(get_current_user)],):
     if current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
