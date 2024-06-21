@@ -14,7 +14,8 @@ from app.database import SessionLocal, engine
 
 from app.auth import UserAuth, get_test_user, oauth2_scheme
 from typing import Annotated # type:ignore
-from fastapi import Depends
+from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import Depends, FastAPI
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -34,8 +35,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Dependency
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
 # Testando Auth2
-from fastapi import Depends, FastAPI
 
 @app.get("/items2/")
 async def read_items(token: str = Depends(oauth2_scheme)):
@@ -45,15 +54,12 @@ async def read_items(token: str = Depends(oauth2_scheme)):
 async def read_users_me(current_user: Annotated[UserAuth, Depends(get_test_user)]):
     return current_user
 
-# final Auth2    
+app.post("/token")
+async def login(form_data: Annotated[OAuth2PasswordRequestForm, db: Depends(get_db)]):
+    #user_dict = db.get(form_data.username)
+    pass
 
-# Dependency
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+# final Auth2    
 
 @app.post("/users/", response_model=schemas.User)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
