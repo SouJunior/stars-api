@@ -1,7 +1,7 @@
 from __future__ import print_function
 
 import os
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, status
 from sqlalchemy.orm import Session
 
 import sib_api_v3_sdk # type:ignore
@@ -12,11 +12,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from app import crud, models, schemas
 from app.database import SessionLocal, engine
 
-from app.auth import UserAuth, get_test_user, oauth2_scheme, UserInDB
+from app.settings import settings
+from app.auth import UserAuth, oauth2_scheme, UserInDB, authenticate_user, create_access_token, get_current_user, get_current_active_user, Token 
 from typing import Annotated # type:ignore
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi import Depends, FastAPI
 from app.models import User
+from datetime import datetime, timedelta
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -46,26 +48,27 @@ def get_db():
         db.close()
 
 
-# Testando Auth2
+# Testando Auth
 
-app.post("/token")
-async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: Session = Depends(get_db)):  
-    user = db.query(User).filter(User.username == form_data.username).first()
-
+@app.post("/token", response_model=Token)
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    user = authenticate_user(db, form_data.username, form_data.password)
     if not user:
-        raise HTTPException(status_code=400, detail="Incorrect username or password")
-    userAuth = UserInDB(**user)
-    hashed_password = db.query(User).filter(User.password == form_data.password).first()
-
-    if not hashed_password == user.hashed_password:
-        raise HTTPException(status_code=400, detail="Incorrect username or password")
-
-    return {"access_token": user.username, "token_type": "bearer"}
-
-@app.get("/items2/")
-async def read_items(token: str = Depends(oauth2_scheme)):
-    return {"token": token}
-
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    if settings.ACCESS_TOKEN_EXPIRE_MINUTES is None:
+        raise ValueError("ACCESS_TOKEN_EXPIRE_MINUTES cannot be None")
+    
+    access_token_expires = timedelta(minutes=float(settings.ACCESS_TOKEN_EXPIRE_MINUTES))
+    access_token = create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires, settings=settings
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+    
 @app.get("/users/me")
 async def read_users_me(current_user: Annotated[UserAuth, Depends(get_test_user)]):
     return current_user

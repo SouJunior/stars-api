@@ -1,26 +1,30 @@
 from sqlalchemy.orm import Session
-
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, func
-
 from . import models, schemas
+from app.auth import get_password_hash
 
 
 def get_user(db: Session, user_id: int):
     return db.query(models.User).filter(models.User.id == user_id).first()
-
-
+    
 def get_user_by_email(db: Session, email: str):
     return db.query(models.User).filter(models.User.email == email).first()
 
+def get_user_by_username(db: Session, username: str):
+    return db.query(models.User).filter(models.User.username == username).first()
 
 def get_users(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.User).offset(skip).limit(limit).all()
 
 
 def create_user(db: Session, user: schemas.UserCreate):
-    fake_hashed_password = user.password + "notreallyhashed"
-    db_user = models.User(email=user.email, hashed_password=fake_hashed_password)
-    db_username = models.User(username=user.username, hashed_password=fake_hashed_password)
+    hashed_password = get_password_hash(user.password)
+    db_user = models.User(
+        username=user.username,
+        email=user.email,
+        hashed_password=hashed_password,
+        is_active=True,
+    )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -65,6 +69,7 @@ def get_volunteers_by_email(db: Session, skip: int = 0, limit: int = 100, email:
     models.Volunteer.jobtitle_id,
     ).filter(models.Volunteer.email == email).first()
 
+
 def create_volunteer(db: Session, volunteer: schemas.Volunteer, jobtitle_id: int):
     # print(volunteer.jobtitle_id[0].id)
     # return
@@ -82,8 +87,10 @@ def create_volunteer(db: Session, volunteer: schemas.Volunteer, jobtitle_id: int
     print("db_volunteer",db_volunteer)
     return db_volunteer
 
+
 def get_jobtitles(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.JobTitle).offset(skip).limit(limit).all()
+
 
 def get_volunteer_by_email(db: Session, email: str):
     return db.query(models.Volunteer).filter(models.Volunteer.email == email).first()
