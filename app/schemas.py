@@ -47,7 +47,7 @@ class JobTitle(BaseModel):
 class VolunteerBase(BaseModel):
     name: str
     linkedin: str
-    # email: str
+    email: str
     is_active: Optional[bool]
 
 class VolunteerCreate(VolunteerBase):
@@ -61,10 +61,6 @@ class Volunteer(VolunteerBase):
     id: int
     jobtitle_id: int
     masked_email: Optional[str] = None
-
-
-    class Config:
-        orm_mode = True
 
 class Token(BaseModel):
     access_token: str
