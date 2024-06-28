@@ -48,13 +48,13 @@ class VolunteerBase(BaseModel):
     name: str
     linkedin: str
     # email: str
-    is_active: bool
+    is_active: Optional[bool]
 
 class VolunteerCreate(VolunteerBase):
     name: str
     email: str
     masked_email: Optional[str] = None
-    is_active: Optional[bool] = True # type:ignore
+    is_active: Optional[bool] = True
     jobtitle_id: int
 
 class Volunteer(VolunteerBase):
@@ -65,4 +65,19 @@ class Volunteer(VolunteerBase):
 
     class Config:
         orm_mode = True
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    username: Union[str, None] = None
+
+class UserAuth(BaseModel):
+    username: str
+    email: str
+    is_active: Union[bool, None] = None
+
+class UserInDB(UserAuth):
+    hashed_password: str
 

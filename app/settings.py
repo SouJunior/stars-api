@@ -7,9 +7,9 @@ class __Settings(BaseSettings):
     DB_HOST: str
     DB_PORT: int 
     DB_DATABASE: str 
-    SECRETE_KEY: str
-    ALGORITHM: str
-    ACCESS_TOKEN_EXPIRE_MINUTES: float
+    JWT_SECRETE_KEY: str
+    PASSWORD_HASH_ALGORITHM: str
+    JWT_EXPIRE_MINUTES: int
 
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8')
 

@@ -5,19 +5,18 @@ from fastapi import Depends, FastAPI, HTTPException, status
 from sqlalchemy.orm import Session
 
 import sib_api_v3_sdk # type:ignore
-from sib_api_v3_sdk.rest import ApiException # type:ignore
+from sib_api_v3_sdk.rest import ApiException  # type:ignore
 from pprint import pprint
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import crud, models, schemas
-from app.database import SessionLocal, engine
+from app.database import SessionLocal, engine, get_db
 
 from app.settings import settings
-from app.auth import UserAuth, oauth2_scheme, UserInDB, authenticate_user, create_access_token, get_current_user, get_current_active_user, Token 
-from typing import Annotated # type:ignore
+from app.auth import oauth2_scheme, authenticate_user, create_access_token, get_current_user, get_current_active_user
+from typing import Annotated 
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi import Depends, FastAPI
-from app.models import User
 from datetime import datetime, timedelta
 
 models.Base.metadata.create_all(bind=engine)
@@ -39,18 +38,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Dependency
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-# Testando Auth
-
-@app.post("/token", response_model=Token)
+@app.post("/token", response_model=schemas.Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = authenticate_user(db, form_data.username, form_data.password)
     if not user:
@@ -60,20 +48,14 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    if settings.ACCESS_TOKEN_EXPIRE_MINUTES is None:
+    if settings.JWT_EXPIRE_MINUTES is None:
         raise ValueError("ACCESS_TOKEN_EXPIRE_MINUTES cannot be None")
     
-    access_token_expires = timedelta(minutes=float(settings.ACCESS_TOKEN_EXPIRE_MINUTES))
+    access_token_expires = timedelta(minutes=float(settings.JWT_EXPIRE_MINUTES))
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires, settings=settings
     )
     return {"access_token": access_token, "token_type": "bearer"}
-    
-@app.get("/users/me")
-async def read_users_me(current_user: Annotated[UserAuth, Depends(get_test_user)]):
-    return current_user
-
-# final Auth2    
 
 @app.post("/users/", response_model=schemas.User)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
@@ -104,7 +86,7 @@ def create_item_for_user(
     return crud.create_user_item(db=db, item=item, user_id=user_id)
 
 
-@app.get("/items/", response_model=list[schemas.Item]) # type:ignore
+@app.get("/items/", response_model=list[schemas.Item]) 
 def read_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     items = crud.get_items(db, skip=skip, limit=limit)
     return items
