@@ -11,6 +11,9 @@ services:
       DB_HOST: mysql_database
       DB_PORT: 3306
       DB_DATABASE: db
+      JWT_SECRETE_KEY: testestestestetsteste
+      PASSWORD_HASH_ALGORITHM: HS256
+      JWT_EXPIRE_MINUTES: 30
     ports:
       - '8000:80'
     volumes:
