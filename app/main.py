@@ -4,8 +4,8 @@ import os
 from fastapi import Depends, FastAPI, HTTPException, status
 from sqlalchemy.orm import Session
 
-import sib_api_v3_sdk 
-from sib_api_v3_sdk.rest import ApiException  
+import sib_api_v3_sdk # type:ignore
+from sib_api_v3_sdk.rest import ApiException  # type:ignore
 from pprint import pprint
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -14,7 +14,7 @@ from app.database import SessionLocal, engine
 
 from app.settings import settings
 from app.auth import oauth2_scheme, authenticate_user, create_access_token, get_current_user, get_current_active_user
-from typing import Annotated 
+from typing import Annotated
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi import Depends, FastAPI
 from datetime import datetime, timedelta
@@ -41,7 +41,7 @@ app.add_middleware(
 )
 
 @app.post("/token", response_model=schemas.Token)
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)) -> dict:
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = authenticate_user(db, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
@@ -49,13 +49,13 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
-    if settings.JWT_EXPIRE_MINUTES is None:
+
+    if not settings.JWT_EXPIRE_MINUTES:
         raise ValueError("ACCESS_TOKEN_EXPIRE_MINUTES cannot be None")
-    
+
     access_token_expires = timedelta(minutes=float(settings.JWT_EXPIRE_MINUTES))
     access_token = create_access_token(
-        data={"sub": user.username} 
+        data={"sub": user.email}
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
@@ -88,7 +88,7 @@ def create_item_for_user(
     return crud.create_user_item(db=db, item=item, user_id=user_id)
 
 
-@app.get("/items/", response_model=list[schemas.Item]) 
+@app.get("/items/", response_model=list[schemas.Item])
 def read_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     items = crud.get_items(db, skip=skip, limit=limit)
     return items
@@ -139,7 +139,7 @@ def create_volunteer(volunteer: schemas.VolunteerCreate, db: Session = Depends(g
         raise HTTPException(status_code=400, detail="Email already registered")
 
     vol = crud.create_volunteer(
-        db=db, volunteer=volunteer, jobtitle_id=volunteer.jobtitle_id # type:ignore
+        db=db, volunteer=volunteer, jobtitle_id=volunteer.jobtitle_id
     )
     # send_email(volunteer.email, volunteer.name)
     return vol

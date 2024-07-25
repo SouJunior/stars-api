@@ -1,12 +1,12 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Union
+
 class __Settings(BaseSettings):
-    DB_DRIVER: str 
-    DB_USERNAME: str 
-    DB_PASSWORD: str 
+    DB_DRIVER: str
+    DB_USERNAME: str
+    DB_PASSWORD: str
     DB_HOST: str
-    DB_PORT: int 
-    DB_DATABASE: str 
+    DB_PORT: int
+    DB_DATABASE: str
     JWT_SECRETE_KEY: str
     PASSWORD_HASH_ALGORITHM: str
     JWT_EXPIRE_MINUTES: int
