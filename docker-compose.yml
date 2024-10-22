@@ -1,8 +1,6 @@
 services:
   stars-api:
-    build:
-      context: ../
-      dockerfile: .docker/Dockerfile
+    build: .
     container_name: stars-api
     environment:
       PORT: 8000
@@ -13,10 +11,13 @@ services:
       DB_HOST: mysql_database
       DB_PORT: 3306
       DB_DATABASE: db
+      JWT_SECRETE_KEY: testestestestetsteste
+      PASSWORD_HASH_ALGORITHM: HS256
+      JWT_EXPIRE_MINUTES: 30
     ports:
       - '8000:80'
     volumes:
-      - ../app:/code/app
+      - ./app:/code/app
     restart: on-failure
     command: uvicorn app.main:app --host 0.0.0.0 --port 80 --reload
     depends_on:
