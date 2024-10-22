@@ -3,7 +3,6 @@ from sqlalchemy.orm import relationship
 
 from .database import Base
 
-
 class User(Base):
     __tablename__ = "users"
 
@@ -42,7 +41,7 @@ class Volunteer(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(45), index=True)
     linkedin = Column(String(3072), index=True)
-    email = Column(String(320), index=True)
+    email = Column(String(255), index=True)
     is_active = Column(Boolean, default=True)
     jobtitle_id = Column(Integer, ForeignKey("jobtitle.id"))
 
