@@ -31,15 +31,16 @@ def create_user_item(db: Session, item: schemas.ItemCreate, user_id: int):
 
 def get_volunteers(db: Session, skip: int = 0, limit: int = 100):
     return db.query(
-    models.Volunteer.id,
-    models.Volunteer.name,
-    func.replace(
-        models.Volunteer.email,
-        func.substr(models.Volunteer.email, 1, func.instr(models.Volunteer.email, '@') - 1),
-        '***').label("masked_email"),
-    models.Volunteer.is_active,
-    models.Volunteer.jobtitle_id,
-    # models.Volunteer.email
+        models.Volunteer.id,
+        models.Volunteer.name,
+        func.replace(
+            models.Volunteer.email,
+            func.substr(models.Volunteer.email, 1, func.instr(models.Volunteer.email, '@') - 1),
+            '***').label("masked_email"),
+        models.Volunteer.is_active,
+        models.Volunteer.jobtitle_id,
+        models.Volunteer.linkedin,
+        # models.Volunteer.email
     ).all()
     # return db.query(models.Volunteer).offset(skip).limit(limit).all()
 
@@ -57,7 +58,7 @@ def get_volunteers_by_email(db: Session, skip: int = 0, limit: int = 100, email:
     ).filter(models.Volunteer.email == email).first()
 
 
-def create_volunteer(db: Session, volunteer: schemas.VolunteerBase, jobtitle_id: int):
+def create_volunteer(db: Session, volunteer: schemas.VolunteerCreate, jobtitle_id: int):
     db_volunteer = models.Volunteer(**volunteer.dict())
     db.add(db_volunteer)
     db.commit()

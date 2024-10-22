@@ -47,17 +47,22 @@ class JobTitle(BaseModel):
 class VolunteerBase(BaseModel):
     name: str
     linkedin: str
-    email: str
+    # email: str
     is_active: Optional[bool]
 
 class VolunteerCreate(VolunteerBase):
-    name: str
-    email: str
-    masked_email: Optional[str] = None
+    # name: str
+    # email: str
+    # masked_email: Optional[str] = None
     is_active: Optional[bool] = True
     jobtitle_id: int
 
 class Volunteer(VolunteerBase):
+    id: int
+    jobtitle_id: int
+    masked_email: Optional[str] = None
+
+class VolunteerList(VolunteerBase):
     id: int
     jobtitle_id: int
     masked_email: Optional[str] = None

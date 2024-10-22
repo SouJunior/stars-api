@@ -19,7 +19,7 @@ class Item(Base):
 
     id = Column(Integer, primary_key=True)
     title = Column(String(255), index=True)
-    description = Column(Text(3000), index=True)
+    description = Column(Text(300), index=True)
     owner_id = Column(Integer, ForeignKey("users.id"))
 
     owner = relationship("User", back_populates="items")

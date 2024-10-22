@@ -113,7 +113,7 @@ def read_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
 
 
 # volunteer
-@app.get("/volunteers/", response_model=list[schemas.Volunteer])
+@app.get("/volunteers/", response_model=list[schemas.VolunteerList])
 def get_volunteers(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     db_volunteers = crud.get_volunteers(db)
     if db_volunteers is None:
@@ -137,6 +137,9 @@ def create_volunteer(volunteer: schemas.VolunteerCreate, db: Session = Depends(g
     db_user = crud.get_volunteer_by_email(db, email=volunteer.email)
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
+
+    if volunteer.jobtitle_id <= 0:
+        raise HTTPException(status_code=400, detail="We need jobtitle_id")
 
     vol = crud.create_volunteer(
         db=db, volunteer=volunteer, jobtitle_id=volunteer.jobtitle_id
