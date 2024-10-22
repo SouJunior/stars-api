@@ -52,7 +52,7 @@ class VolunteerBase(BaseModel):
 
 class VolunteerCreate(VolunteerBase):
     # name: str
-    # email: str
+    email: str
     # masked_email: Optional[str] = None
     is_active: Optional[bool] = True
     jobtitle_id: int
