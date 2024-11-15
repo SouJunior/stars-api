@@ -32,6 +32,18 @@ jobs:
     - name: Format with Black
       run: black .
 
+    - name: Set environment variables (just for testing)
+      run: |
+        export DB_DRIVER=postgresql
+        export DB_USERNAME=test_user
+        export DB_PASSWORD=test_password
+        export DB_HOST=localhost
+        export DB_PORT=5432
+        export DB_DATABASE=test_db
+        export JWT_SECRETE_KEY=test_secret_key
+        export PASSWORD_HASH_ALGORITHM=HS256
+        export JWT_EXPIRE_MINUTES=30
+
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
