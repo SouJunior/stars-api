@@ -1,0 +1,86 @@
+name: Test Python and Deploy to ECR
+on: 
+  push:
+    branches: 
+      - master
+      - develop
+  pull_request:
+    branches: 
+      - master
+      - develop
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    if: github.ref_name == 'develop'
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.12"
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 pytest black pytest-cov
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+    - name: Set Environment Variables for Testing
+      run: |
+        echo "PORT=8000" >> $GITHUB_ENV
+        echo "DEBUG=1" >> $GITHUB_ENV
+        echo "DB_DRIVER=mysql+mysqlconnector" >> $GITHUB_ENV
+        echo "DB_USERNAME=mysql" >> $GITHUB_ENV
+        echo "DB_PASSWORD=mysql" >> $GITHUB_ENV
+        echo "DB_HOST=mysql_database" >> $GITHUB_ENV
+        echo "DB_PORT=3306" >> $GITHUB_ENV
+        echo "DB_DATABASE=db" >> $GITHUB_ENV
+        echo "JWT_SECRETE_KEY=testestestestetsteste" >> $GITHUB_ENV
+        echo "PASSWORD_HASH_ALGORITHM=HS256" >> $GITHUB_ENV
+        echo "JWT_EXPIRE_MINUTES=30" >> $GITHUB_ENV
+
+    - name: Test with pytest and coverage
+      run: |
+        pytest --cov=app --cov-report=term --cov-fail-under=100
+  
+  deploy:
+    if: github.ref_name == 'master'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout on project
+        uses: actions/checkout@v4
+
+      - name: Authentication on AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build, Tag, and Push the Image to Amazon ECR for Production
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: star-api
+          IMAGE_TAG: ${{ github.sha }} 
+
+        run: |
+          set -e
+
+          echo "Building Docker image with tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+
+          echo "Pushing Docker image to ECR with tag $IMAGE_TAG"
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+          echo "Docker image pushed successfully!"
