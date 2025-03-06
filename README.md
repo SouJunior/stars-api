@@ -97,4 +97,13 @@ http://localhost:8000/docs
 ### Parar o servidor
   docker stop <seu id> 65d05c5e44806478fd97914e8ecdb61a3a1b530686b20640da7c68e5717ec7a3
 
+## DevOps
 
+> [!CAUTION]
+> WebApp utiliza API disponível em https://qwnh5gcnmp.us-east-1.awsapprunner.com/docs
+> Indicando uso do serviço AWS App Runner para deploy da API, sem documentação dessa decisão no README
+
+> [!TIP]
+> Configurar Continuous Deployment, garantindo ambiente de produção sempre atualizado
+
+N/A
