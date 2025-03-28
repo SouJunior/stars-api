@@ -13,6 +13,6 @@ class __Settings(BaseSettings):
     BREVO_API_KEY: str
     brevo_api_key: str
 
-    model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8')
+    model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra='allow')
 
 settings = __Settings() # type:ignore
