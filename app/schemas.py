@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional, Union
+from datetime import datetime
 
 
 class ItemBase(BaseModel):
@@ -24,7 +25,6 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
-    username: str
     password: str
 
 
@@ -40,6 +40,30 @@ class JobTitle(BaseModel):
     id: int
     title: str
     is_active: bool
+
+    class Config:
+        orm_mode = True
+
+class VolunteerStatusBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+class VolunteerStatusCreate(VolunteerStatusBase):
+    pass
+
+class VolunteerStatus(VolunteerStatusBase):
+    id: int
+
+    class Config:
+        orm_mode = True
+
+class VolunteerStatusHistoryBase(BaseModel):
+    status_id: int
+    created_at: datetime
+
+class VolunteerStatusHistory(VolunteerStatusHistoryBase):
+    id: int
+    status: VolunteerStatus
 
     class Config:
         orm_mode = True
@@ -60,12 +84,27 @@ class VolunteerCreate(VolunteerBase):
 class Volunteer(VolunteerBase):
     id: int
     jobtitle_id: int
+    status_id: Optional[int] = None
     masked_email: Optional[str] = None
+    created_at: Optional[datetime] = None
+    jobtitle: Optional['JobTitle'] = None
+    status: Optional[VolunteerStatus] = None
+    status_history: list[VolunteerStatusHistory] = []
+
+    class Config:
+        orm_mode = True
 
 class VolunteerList(VolunteerBase):
     id: int
     jobtitle_id: int
+    status_id: Optional[int] = None
     masked_email: Optional[str] = None
+    created_at: Optional[datetime] = None
+    jobtitle: Optional['JobTitle'] = None
+    status: Optional[VolunteerStatus] = None
+
+    class Config:
+        orm_mode = True
 
 class Token(BaseModel):
     access_token: str
@@ -73,6 +112,7 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     username: Union[str, None] = None
+
 
 class UserAuth(BaseModel):
     username: str

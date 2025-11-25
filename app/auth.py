@@ -9,7 +9,7 @@ from app.database import get_db, SessionLocal
 from datetime import datetime, timedelta
 from app.settings import settings
 from app.schemas import UserAuth, TokenData
-from app.utils import get_user_by_username
+from app.utils import get_user_by_email
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -23,7 +23,7 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 def authenticate_user(db: Session, email: str, password: str):
-    user = get_user_by_username(db, email)
+    user = get_user_by_email(db, email)
     if not user:
         return False
     if not verify_password(password, user.hashed_password):
@@ -50,22 +50,24 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     try:
         payload = jwt.decode(token, settings.JWT_SECRETE_KEY, algorithms=[settings.PASSWORD_HASH_ALGORITHM])
         email: Union[str, None] = payload.get("sub")
-        if not email is None:
+        if email is None:
             raise credentials_exception
         token_data = TokenData(username=email)
     except JWTError:
         raise credentials_exception
 
-    if not token_data.username is None:
+    if token_data.username is None:
         raise credentials_exception
 
-    user = get_user_by_username(db, token_data.username) #type:ignore
-    if not user is None:
+    user = get_user_by_email(db, token_data.username) #type:ignore
+    if user is None:
         raise credentials_exception
 
     return user
 
-def get_current_active_user(current_user: UserAuth = Depends(get_current_user)):
+from app import schemas
+
+def get_current_active_user(current_user: schemas.User = Depends(get_current_user)):
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user

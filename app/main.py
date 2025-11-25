@@ -14,7 +14,7 @@ from app.database import SessionLocal, engine
 
 from app.settings import settings
 from app.auth import oauth2_scheme, authenticate_user, create_access_token, get_current_user, get_current_active_user
-from typing import Annotated
+from typing import Annotated, Optional
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi import Depends, FastAPI
 from datetime import datetime, timedelta
@@ -41,7 +41,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.post("/token", response_model=schemas.Token)
+@app.post("/token", response_model=schemas.Token, summary="Login para obter token de acesso", description="Autentica um usuário com email e senha e retorna um token JWT para acesso a rotas protegidas.")
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = authenticate_user(db, form_data.username, form_data.password)
     if not user:
@@ -60,6 +60,12 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
+
+@app.get("/users/me/", response_model=schemas.User, summary="Obter usuário autenticado", description="Retorna os detalhes do usuário atualmente autenticado.")
+async def read_users_me(current_user: schemas.User = Depends(get_current_active_user)):
+    return current_user
+
+
 @app.post("/users/", response_model=schemas.User)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = utils.get_user_by_email(db, email=user.email)
@@ -68,23 +74,23 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     return crud.create_user(db=db, user=user)
 
 
-@app.get("/users/", response_model=list[schemas.User])
-def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+@app.get("/users/", response_model=list[schemas.User], summary="Listar usuários", description="Retorna uma lista de todos os usuários. Requer autenticação.")
+def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: schemas.User = Depends(get_current_active_user)):
     users = utils.get_users(db, skip=skip, limit=limit)
     return users
 
 
-@app.get("/users/{user_id}", response_model=schemas.User)
-def read_user(user_id: int, db: Session = Depends(get_db)):
+@app.get("/users/{user_id}", response_model=schemas.User, summary="Obter usuário por ID", description="Retorna os detalhes de um usuário específico pelo seu ID. Requer autenticação.")
+def read_user(user_id: int, db: Session = Depends(get_db), current_user: schemas.User = Depends(get_current_active_user)):
     db_user = utils.get_user(db, user_id=user_id)
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
     return db_user
 
 
-@app.post("/users/{user_id}/items/", response_model=schemas.Item)
+@app.post("/users/{user_id}/items/", response_model=schemas.Item, summary="Criar item para usuário", description="Cria um novo item associado a um usuário específico. Requer autenticação.")
 def create_item_for_user(
-    user_id: int, item: schemas.ItemCreate, db: Session = Depends(get_db)
+    user_id: int, item: schemas.ItemCreate, db: Session = Depends(get_db), current_user: schemas.User = Depends(get_current_active_user)
 ):
     return crud.create_user_item(db=db, item=item, user_id=user_id)
 
@@ -115,8 +121,8 @@ def read_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
 
 # volunteer
 @app.get("/volunteers/", response_model=list[schemas.VolunteerList])
-def get_volunteers(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    db_volunteers = crud.get_volunteers(db)
+def get_volunteers(skip: int = 0, limit: int = 100, name: Optional[str] = None, jobtitle_id: Optional[int] = None, db: Session = Depends(get_db)):
+    db_volunteers = crud.get_volunteers(db, skip=skip, limit=limit, name=name, jobtitle_id=jobtitle_id)
     if db_volunteers is None:
         raise HTTPException(status_code=404, detail="Volunteer not found")
     return db_volunteers
@@ -150,12 +156,57 @@ def create_volunteer(volunteer: schemas.VolunteerCreate, db: Session = Depends(g
     return vol
 
 
+@app.get("/volunteers/{volunteer_id}", response_model=schemas.Volunteer)
+def get_volunteer_by_id(
+    volunteer_id: int, db: Session = Depends(get_db)
+):
+    db_volunteer = crud.get_volunteer_by_id(db, volunteer_id=volunteer_id)
+    if db_volunteer is None:
+        raise HTTPException(status_code=404, detail="Volunteer not found")
+    return db_volunteer
+
+
+@app.patch("/volunteers/{volunteer_id}/status/", response_model=schemas.Volunteer)
+def update_volunteer_status(
+    volunteer_id: int,
+    new_status_id: int,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user) # Assuming status updates are restricted to authenticated users
+):
+    # Check if the new_status_id is valid
+    db_status = db.query(models.VolunteerStatus).filter(models.VolunteerStatus.id == new_status_id).first()
+    if not db_status:
+        raise HTTPException(status_code=404, detail="New status not found")
+
+    updated_volunteer = crud.update_volunteer_status(db, volunteer_id, new_status_id)
+    if updated_volunteer is None:
+        raise HTTPException(status_code=404, detail="Volunteer not found")
+    return updated_volunteer
+
+
 @app.get("/jobtitles/", response_model=list[schemas.JobTitle])
 def get_jobtitles(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     db_jobtitles = crud.get_jobtitles(db)
     if db_jobtitles is None:
         raise HTTPException(status_code=404, detail="JobTitles not found")
     return db_jobtitles
+
+
+@app.post("/volunteer-statuses/", response_model=schemas.VolunteerStatus)
+def create_volunteer_status(
+    status: schemas.VolunteerStatusCreate,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user) # Assuming status creation is restricted
+):
+    db_status = db.query(models.VolunteerStatus).filter(models.VolunteerStatus.name == status.name).first()
+    if db_status:
+        raise HTTPException(status_code=400, detail="Volunteer Status with this name already exists")
+    return crud.create_volunteer_status(db=db, status=status)
+
+
+@app.get("/volunteer-statuses/", response_model=list[schemas.VolunteerStatus])
+def get_volunteer_statuses(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    return crud.get_volunteer_statuses(db, skip=skip, limit=limit)
 
 
 def send_email(email, name):
