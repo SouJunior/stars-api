@@ -41,7 +41,7 @@ def setup_and_teardown_db():
 def test_create_user():
     response = client.post(
         "/users/",
-        json={"email": "test@example.com", "password": "testpassword"},
+        json={"email": "test@example.com", "password": "testpassword", "registration_code": "changeme"},
     )
     assert response.status_code == 200
     data = response.json()
@@ -54,7 +54,7 @@ def test_login_for_access_token():
     # Primeiro, crie um usuário para poder fazer login
     client.post(
         "/users/",
-        json={"email": "loginuser@example.com", "password": "loginpassword"},
+        json={"email": "loginuser@example.com", "password": "loginpassword", "registration_code": "changeme"},
     )
     
     response = client.post(
@@ -77,7 +77,7 @@ def test_read_users_me_authorized():
     # Crie um usuário e faça login para obter um token
     client.post(
         "/users/",
-        json={"email": "me_user@example.com", "password": "me_password"},
+        json={"email": "me_user@example.com", "password": "me_password", "registration_code": "changeme"},
     )
     login_response = client.post(
         "/token",

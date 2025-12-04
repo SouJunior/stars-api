@@ -68,6 +68,8 @@ async def read_users_me(current_user: schemas.User = Depends(get_current_active_
 
 @app.post("/users/", response_model=schemas.User)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    if user.registration_code != settings.REGISTRATION_CODE:
+        raise HTTPException(status_code=400, detail="Invalid registration code")
     db_user = utils.get_user_by_email(db, email=user.email)
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -121,8 +123,8 @@ def read_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
 
 # volunteer
 @app.get("/volunteers/", response_model=list[schemas.VolunteerList])
-def get_volunteers(skip: int = 0, limit: int = 100, name: Optional[str] = None, jobtitle_id: Optional[int] = None, db: Session = Depends(get_db)):
-    db_volunteers = crud.get_volunteers(db, skip=skip, limit=limit, name=name, jobtitle_id=jobtitle_id)
+def get_volunteers(skip: int = 0, limit: int = 100, name: Optional[str] = None, jobtitle_id: Optional[int] = None, status_id: Optional[int] = None, db: Session = Depends(get_db)):
+    db_volunteers = crud.get_volunteers(db, skip=skip, limit=limit, name=name, jobtitle_id=jobtitle_id, status_id=status_id)
     if db_volunteers is None:
         raise HTTPException(status_code=404, detail="Volunteer not found")
     return db_volunteers

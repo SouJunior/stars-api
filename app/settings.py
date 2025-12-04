@@ -11,6 +11,7 @@ class __Settings(BaseSettings):
     PASSWORD_HASH_ALGORITHM: str
     JWT_EXPIRE_MINUTES: int
     BREVO_API_KEY: str
+    REGISTRATION_CODE: str = "changeme"
 
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8')
 
