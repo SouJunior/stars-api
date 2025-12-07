@@ -1,7 +1,7 @@
 from __future__ import print_function
 
 import os
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
 import sib_api_v3_sdk # type:ignore
@@ -122,9 +122,18 @@ def read_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
 
 
 # volunteer
-@app.get("/volunteers/", response_model=list[schemas.VolunteerList])
-def get_volunteers(skip: int = 0, limit: int = 100, name: Optional[str] = None, jobtitle_id: Optional[int] = None, status_id: Optional[int] = None, db: Session = Depends(get_db)):
-    db_volunteers = crud.get_volunteers(db, skip=skip, limit=limit, name=name, jobtitle_id=jobtitle_id, status_id=status_id)
+@app.get("/volunteers/", response_model=list[schemas.VolunteerList], summary="Listar voluntários", description="Retorna uma lista de voluntários com opções de filtro por nome, email, cargo e status.")
+def get_volunteers(
+    skip: int = 0, 
+    limit: int = 100, 
+    name: Optional[str] = None, 
+    email: Optional[str] = Query(None, description="Filtrar por email (busca parcial)"), 
+    jobtitle_id: Optional[int] = None, 
+    status_id: Optional[int] = None, 
+    order: str = Query("desc", enum=["asc", "desc"], description="Ordenação por data de criação"),
+    db: Session = Depends(get_db)
+):
+    db_volunteers = crud.get_volunteers(db, skip=skip, limit=limit, name=name, email=email, jobtitle_id=jobtitle_id, status_id=status_id, order=order)
     if db_volunteers is None:
         raise HTTPException(status_code=404, detail="Volunteer not found")
     return db_volunteers

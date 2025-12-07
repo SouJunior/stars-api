@@ -28,7 +28,7 @@ def create_user_item(db: Session, item: schemas.ItemCreate, user_id: int):
     db.refresh(db_item)
     return db_item
 
-def get_volunteers(db: Session, skip: int = 0, limit: int = 100, name: str = None, jobtitle_id: int = None, status_id: int = None):
+def get_volunteers(db: Session, skip: int = 0, limit: int = 100, name: str = None, email: str = None, jobtitle_id: int = None, status_id: int = None, order: str = "desc"):
     query = db.query(models.Volunteer).options(
         joinedload(models.Volunteer.jobtitle),
         joinedload(models.Volunteer.status),
@@ -36,10 +36,18 @@ def get_volunteers(db: Session, skip: int = 0, limit: int = 100, name: str = Non
     )
     if name:
         query = query.filter(models.Volunteer.name.ilike(f"%{name}%"))
+    if email:
+        query = query.filter(models.Volunteer.email.ilike(f"%{email}%"))
     if jobtitle_id:
         query = query.filter(models.Volunteer.jobtitle_id == jobtitle_id)
     if status_id:
         query = query.filter(models.Volunteer.status_id == status_id)
+
+    if order == "desc":
+        query = query.order_by(models.Volunteer.created_at.desc())
+    else:
+        query = query.order_by(models.Volunteer.created_at.asc())
+
     return query.offset(skip).limit(limit).all()
 
 def get_volunteer_by_id(db: Session, volunteer_id: int):
