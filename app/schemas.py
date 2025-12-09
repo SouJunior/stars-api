@@ -72,6 +72,7 @@ class VolunteerStatusHistory(VolunteerStatusHistoryBase):
 class VolunteerBase(BaseModel):
     name: str
     linkedin: str
+    phone: Optional[str] = None
     # email: str
     is_active: Optional[bool]
 
