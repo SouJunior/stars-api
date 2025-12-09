@@ -45,10 +45,11 @@ def create_user_item(db: Session, item: schemas.ItemCreate, user_id: int):
     db.refresh(db_item)
     return db_item
 
-def get_volunteers(db: Session, skip: int = 0, limit: int = 100, name: str = None, email: str = None, jobtitle_id: int = None, status_id: int = None, order: str = "desc"):
+def get_volunteers(db: Session, skip: int = 0, limit: int = 100, name: str = None, email: str = None, jobtitle_id: int = None, status_id: int = None, squad_id: int = None, order: str = "desc"):
     query = db.query(models.Volunteer).options(
         joinedload(models.Volunteer.jobtitle),
         joinedload(models.Volunteer.status),
+        joinedload(models.Volunteer.squad),
         joinedload(models.Volunteer.status_history).joinedload(models.VolunteerStatusHistory.status)
     )
     if name:
@@ -59,6 +60,8 @@ def get_volunteers(db: Session, skip: int = 0, limit: int = 100, name: str = Non
         query = query.filter(models.Volunteer.jobtitle_id == jobtitle_id)
     if status_id:
         query = query.filter(models.Volunteer.status_id == status_id)
+    if squad_id:
+        query = query.filter(models.Volunteer.squad_id == squad_id)
 
     if order == "desc":
         query = query.order_by(models.Volunteer.created_at.desc())
@@ -71,6 +74,7 @@ def get_volunteer_by_id(db: Session, volunteer_id: int):
     return db.query(models.Volunteer).options(
         joinedload(models.Volunteer.jobtitle),
         joinedload(models.Volunteer.status),
+        joinedload(models.Volunteer.squad),
         joinedload(models.Volunteer.status_history).joinedload(models.VolunteerStatusHistory.status)
     ).filter(models.Volunteer.id == volunteer_id).first()
 
@@ -79,6 +83,7 @@ def get_volunteer_by_email(db: Session, email: str):
         .options(
             joinedload(models.Volunteer.jobtitle),
             joinedload(models.Volunteer.status),
+            joinedload(models.Volunteer.squad),
             joinedload(models.Volunteer.status_history).joinedload(models.VolunteerStatusHistory.status)
         )\
         .filter(models.Volunteer.email == email).first()
@@ -115,6 +120,18 @@ def get_jobtitles(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.JobTitle).offset(skip).limit(limit).all()
 
 
+# Squad CRUD
+def get_squads(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.Squad).offset(skip).limit(limit).all()
+
+def create_squad(db: Session, squad: schemas.SquadCreate):
+    db_squad = models.Squad(name=squad.name)
+    db.add(db_squad)
+    db.commit()
+    db.refresh(db_squad)
+    return db_squad
+
+
 # Volunteer Status CRUD
 def get_volunteer_statuses(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.VolunteerStatus).offset(skip).limit(limit).all()
@@ -145,6 +162,17 @@ def update_volunteer_status(db: Session, volunteer_id: int, new_status_id: int):
         db.refresh(db_volunteer)
     return db_volunteer
 
+def update_volunteer_squad(db: Session, volunteer_id: int, new_squad_id: int):
+    db_volunteer = db.query(models.Volunteer).filter(models.Volunteer.id == volunteer_id).first()
+    if not db_volunteer:
+        return None
+
+    if db_volunteer.squad_id != new_squad_id:
+        db_volunteer.squad_id = new_squad_id
+        db.commit()
+        db.refresh(db_volunteer)
+    return db_volunteer
+
 def get_dashboard_stats(db: Session):
     # 1. Group by status
     status_counts = db.query(
@@ -157,7 +185,18 @@ def get_dashboard_stats(db: Session):
     
     stats_by_status = [{"status": name, "count": count} for name, count in status_counts]
     
-    # 2. Registered today (Brasilia)
+    # 2. Group by squad
+    squad_counts = db.query(
+        models.Squad.name, func.count(models.Volunteer.id)
+    ).join(
+        models.Volunteer, models.Volunteer.squad_id == models.Squad.id
+    ).group_by(
+        models.Squad.name
+    ).all()
+
+    stats_by_squad = [{"squad": name, "count": count} for name, count in squad_counts]
+
+    # 3. Registered today (Brasilia)
     try:
         tz_brasilia = ZoneInfo("America/Sao_Paulo")
     except Exception:
@@ -177,5 +216,6 @@ def get_dashboard_stats(db: Session):
     
     return {
         "total_volunteers_by_status": stats_by_status,
+        "total_volunteers_by_squad": stats_by_squad,
         "total_volunteers_registered_today": count_today
     }

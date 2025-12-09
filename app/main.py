@@ -122,7 +122,7 @@ def read_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
 
 
 # volunteer
-@app.get("/volunteers/", response_model=list[schemas.VolunteerList], summary="Listar voluntários", description="Retorna uma lista de voluntários com opções de filtro por nome, email, cargo e status.")
+@app.get("/volunteers/", response_model=list[schemas.VolunteerList], summary="Listar voluntários", description="Retorna uma lista de voluntários com opções de filtro por nome, email, cargo, status e squad.")
 def get_volunteers(
     skip: int = 0, 
     limit: int = 100, 
@@ -130,10 +130,11 @@ def get_volunteers(
     email: Optional[str] = Query(None, description="Filtrar por email (busca parcial)"), 
     jobtitle_id: Optional[int] = None, 
     status_id: Optional[int] = None, 
+    squad_id: Optional[int] = None,
     order: str = Query("desc", enum=["asc", "desc"], description="Ordenação por data de criação"),
     db: Session = Depends(get_db)
 ):
-    db_volunteers = crud.get_volunteers(db, skip=skip, limit=limit, name=name, email=email, jobtitle_id=jobtitle_id, status_id=status_id, order=order)
+    db_volunteers = crud.get_volunteers(db, skip=skip, limit=limit, name=name, email=email, jobtitle_id=jobtitle_id, status_id=status_id, squad_id=squad_id, order=order)
     if db_volunteers is None:
         raise HTTPException(status_code=404, detail="Volunteer not found")
     return db_volunteers
@@ -195,12 +196,46 @@ def update_volunteer_status(
     return updated_volunteer
 
 
+@app.patch("/volunteers/{volunteer_id}/squad/", response_model=schemas.Volunteer)
+def update_volunteer_squad(
+    volunteer_id: int,
+    new_squad_id: int,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    db_squad = db.query(models.Squad).filter(models.Squad.id == new_squad_id).first()
+    if not db_squad:
+        raise HTTPException(status_code=404, detail="New squad not found")
+
+    updated_volunteer = crud.update_volunteer_squad(db, volunteer_id, new_squad_id)
+    if updated_volunteer is None:
+        raise HTTPException(status_code=404, detail="Volunteer not found")
+    return updated_volunteer
+
+
 @app.get("/jobtitles/", response_model=list[schemas.JobTitle])
 def get_jobtitles(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     db_jobtitles = crud.get_jobtitles(db)
     if db_jobtitles is None:
         raise HTTPException(status_code=404, detail="JobTitles not found")
     return db_jobtitles
+
+
+@app.post("/squads/", response_model=schemas.Squad)
+def create_squad(
+    squad: schemas.SquadCreate,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    db_squad = db.query(models.Squad).filter(models.Squad.name == squad.name).first()
+    if db_squad:
+        raise HTTPException(status_code=400, detail="Squad with this name already exists")
+    return crud.create_squad(db=db, squad=squad)
+
+
+@app.get("/squads/", response_model=list[schemas.Squad])
+def get_squads(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    return crud.get_squads(db, skip=skip, limit=limit)
 
 
 @app.post("/volunteer-statuses/", response_model=schemas.VolunteerStatus)

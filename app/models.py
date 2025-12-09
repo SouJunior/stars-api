@@ -39,6 +39,15 @@ class JobTitle(Base):
     volunteers = relationship("Volunteer", back_populates="jobtitle")
 
 
+class Squad(Base):
+    __tablename__ = "squad"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(50), unique=True, index=True)
+
+    volunteers = relationship("Volunteer", back_populates="squad")
+
+
 class VolunteerStatus(Base):
     __tablename__ = "volunteer_status"
 
@@ -53,17 +62,20 @@ class Volunteer(Base):
     __tablename__ = "volunteer"
 
     id = Column(Integer, primary_key=True)
-    name = Column(String(45), index=True)
+    name = Column(String(255), index=True)
     linkedin = Column(String(255), index=True)
     email = Column(String(255), index=True)
     phone = Column(String(30))
+    discord = Column(String(255), nullable=True)
     is_active = Column(Boolean, default=True)
     jobtitle_id = Column(Integer, ForeignKey("jobtitle.id"))
     status_id = Column(Integer, ForeignKey("volunteer_status.id"), nullable=True)
+    squad_id = Column(Integer, ForeignKey("squad.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     jobtitle = relationship("JobTitle", back_populates="volunteers")
     status = relationship("VolunteerStatus", back_populates="volunteers")
+    squad = relationship("Squad", back_populates="volunteers")
     status_history = relationship("VolunteerStatusHistory", back_populates="volunteer")
 
     @hybrid_property
