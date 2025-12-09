@@ -69,12 +69,14 @@ class VolunteerStatusHistory(VolunteerStatusHistoryBase):
     class Config:
         orm_mode = True
 
-class VolunteerBase(BaseModel):
+class VolunteerCommon(BaseModel):
     name: str
     linkedin: str
+    is_active: Optional[bool]
+
+class VolunteerBase(VolunteerCommon):
     phone: Optional[str] = None
     # email: str
-    is_active: Optional[bool]
 
 class VolunteerCreate(VolunteerBase):
     # name: str
@@ -84,6 +86,19 @@ class VolunteerCreate(VolunteerBase):
     jobtitle_id: int
 
 class Volunteer(VolunteerBase):
+    id: int
+    jobtitle_id: int
+    status_id: Optional[int] = None
+    masked_email: Optional[str] = None
+    created_at: Optional[datetime] = None
+    jobtitle: Optional['JobTitle'] = None
+    status: Optional[VolunteerStatus] = None
+    status_history: list[VolunteerStatusHistory] = []
+
+    class Config:
+        orm_mode = True
+
+class VolunteerPublic(VolunteerCommon):
     id: int
     jobtitle_id: int
     status_id: Optional[int] = None
@@ -123,4 +138,14 @@ class UserAuth(BaseModel):
 
 class UserInDB(UserAuth):
     hashed_password: str
+
+
+class StatusCount(BaseModel):
+    status: str
+    count: int
+
+
+class DashboardStats(BaseModel):
+    total_volunteers_by_status: list[StatusCount]
+    total_volunteers_registered_today: int
 

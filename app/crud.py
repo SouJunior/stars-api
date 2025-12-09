@@ -2,6 +2,23 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, func
 from . import models, schemas
 from app.auth import get_password_hash
+from datetime import datetime, timedelta, timezone
+
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    # Fallback for systems without zoneinfo data
+    class ZoneInfo:
+        def __init__(self, key):
+             self.key = key
+        def utcoffset(self, dt):
+             if self.key == "America/Sao_Paulo":
+                 return timedelta(hours=-3)
+             return timedelta(0)
+        def dst(self, dt):
+             return timedelta(0)
+        def tzname(self, dt):
+             return self.key
 
 
 def create_user(db: Session, user: schemas.UserCreate):
@@ -127,3 +144,38 @@ def update_volunteer_status(db: Session, volunteer_id: int, new_status_id: int):
         db.commit()
         db.refresh(db_volunteer)
     return db_volunteer
+
+def get_dashboard_stats(db: Session):
+    # 1. Group by status
+    status_counts = db.query(
+        models.VolunteerStatus.name, func.count(models.Volunteer.id)
+    ).join(
+        models.Volunteer, models.Volunteer.status_id == models.VolunteerStatus.id
+    ).group_by(
+        models.VolunteerStatus.name
+    ).all()
+    
+    stats_by_status = [{"status": name, "count": count} for name, count in status_counts]
+    
+    # 2. Registered today (Brasilia)
+    try:
+        tz_brasilia = ZoneInfo("America/Sao_Paulo")
+    except Exception:
+         tz_brasilia = timezone(timedelta(hours=-3))
+
+    now_brasilia = datetime.now(tz_brasilia)
+    
+    # Start of day in Brasilia
+    start_of_day_brasilia = now_brasilia.replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    # Convert to UTC for DB query
+    start_of_day_utc = start_of_day_brasilia.astimezone(timezone.utc)
+    
+    count_today = db.query(models.Volunteer).filter(
+        models.Volunteer.created_at >= start_of_day_utc
+    ).count()
+    
+    return {
+        "total_volunteers_by_status": stats_by_status,
+        "total_volunteers_registered_today": count_today
+    }

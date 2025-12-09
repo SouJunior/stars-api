@@ -140,7 +140,7 @@ def get_volunteers(
 
 
 # volunteer by email
-@app.get("/volunteer/{email}", response_model=schemas.Volunteer)
+@app.get("/volunteer/{email}", response_model=schemas.VolunteerPublic)
 def get_volunteers_by_email(
     skip: int = 0, limit: int = 100, db: Session = Depends(get_db), email: str = ""
 ):
@@ -218,6 +218,11 @@ def create_volunteer_status(
 @app.get("/volunteer-statuses/", response_model=list[schemas.VolunteerStatus])
 def get_volunteer_statuses(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return crud.get_volunteer_statuses(db, skip=skip, limit=limit)
+
+
+@app.get("/dashboard/stats", response_model=schemas.DashboardStats, summary="Estatísticas do Dashboard", description="Retorna estatísticas para o dashboard, incluindo contagem de voluntários por status e cadastros realizados hoje.")
+def get_dashboard_stats(db: Session = Depends(get_db), current_user: schemas.User = Depends(get_current_active_user)):
+    return crud.get_dashboard_stats(db)
 
 
 def send_email(email, name):
