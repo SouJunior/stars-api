@@ -164,7 +164,7 @@ def create_volunteer(volunteer: schemas.VolunteerCreate, db: Session = Depends(g
     vol = crud.create_volunteer(
         db=db, volunteer=volunteer, jobtitle_id=volunteer.jobtitle_id
     )
-    # send_email(volunteer.email, volunteer.name)
+    send_email(volunteer.email, volunteer.name)
     return vol
 
 
@@ -261,6 +261,10 @@ def get_dashboard_stats(db: Session = Depends(get_db), current_user: schemas.Use
 
 
 def send_email(email, name):
+    if not os.getenv("BREVO_API_KEY"):
+        print("BREVO_API_KEY not set, skipping email.")
+        return
+
     print(
         "Email: ",
     )
@@ -275,7 +279,7 @@ def send_email(email, name):
         send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
             to=[{"email": email, "name": name}],
             template_id=9,
-            params={"name": name, "email": email},
+            params={"name": name, "email": email, "contact": {"name": name}},
             headers={
                 "X-Mailin-custom": "custom_header_1:custom_value_1|custom_header_2:custom_value_2|custom_header_3:custom_value_3",
                 "charset": "iso-8859-1",
