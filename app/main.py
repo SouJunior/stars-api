@@ -279,7 +279,7 @@ def send_email(email, name):
         send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
             to=[{"email": email, "name": name}],
             template_id=9,
-            params={"name": name, "email": email, "contact": {"name": name}},
+            params={"name": name, "email": email, "contact": {"NAME": name}, "NOME": name},
             headers={
                 "X-Mailin-custom": "custom_header_1:custom_value_1|custom_header_2:custom_value_2|custom_header_3:custom_value_3",
                 "charset": "iso-8859-1",
