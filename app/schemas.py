@@ -114,6 +114,9 @@ class Volunteer(VolunteerBase):
     class Config:
         orm_mode = True
 
+class VolunteerWithEmail(Volunteer):
+    email: str
+
 class VolunteerPublic(VolunteerCommon):
     id: int
     jobtitle_id: int
@@ -174,4 +177,16 @@ class DashboardStats(BaseModel):
     total_volunteers_by_status: list[StatusCount]
     total_volunteers_by_squad: list[SquadCount]
     total_volunteers_registered_today: int
+
+
+class VolunteerUpdateLinkRequest(BaseModel):
+    email: str
+
+
+class VolunteerUpdateProfile(BaseModel):
+    name: str
+    linkedin: str
+    phone: Optional[str] = None
+    discord: Optional[str] = None
+
 

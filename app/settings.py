@@ -12,6 +12,7 @@ class __Settings(BaseSettings):
     JWT_EXPIRE_MINUTES: int
     BREVO_API_KEY: str
     REGISTRATION_CODE: str = "changeme"
+    BASE_FRONTEND_URL: str = "http://localhost:5173" # Default for local development
 
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8')
 

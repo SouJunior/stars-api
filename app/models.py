@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, DateTime
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, DateTime, Date
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -77,6 +77,11 @@ class Volunteer(Base):
     status = relationship("VolunteerStatus", back_populates="volunteers")
     squad = relationship("Squad", back_populates="volunteers")
     status_history = relationship("VolunteerStatusHistory", back_populates="volunteer")
+
+    edit_token = Column(String(255), nullable=True, index=True)
+    edit_token_expires_at = Column(DateTime, nullable=True)
+    daily_edits_count = Column(Integer, default=0)
+    last_edit_date = Column(Date, nullable=True)
 
     @hybrid_property
     def masked_email(self):

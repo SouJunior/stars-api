@@ -17,7 +17,7 @@ from app.auth import oauth2_scheme, authenticate_user, create_access_token, get_
 from typing import Annotated, Optional
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi import Depends, FastAPI
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.database import get_db
 from app import utils
 
@@ -176,6 +176,55 @@ def get_volunteer_by_id(
     if db_volunteer is None:
         raise HTTPException(status_code=404, detail="Volunteer not found")
     return db_volunteer
+
+
+@app.post("/volunteers/request-edit-link", summary="Solicitar link de edição", description="Envia um link com token para o email do voluntário para edição de perfil.")
+def request_edit_link(
+    request: schemas.VolunteerUpdateLinkRequest,
+    db: Session = Depends(get_db)
+):
+    volunteer = crud.create_volunteer_edit_token(db, request.email)
+    if not volunteer:
+        raise HTTPException(status_code=404, detail="Email não encontrado")
+    
+    # Generate link (Hypothetical frontend URL)
+    link = f"{settings.BASE_FRONTEND_URL}/volunteer/edit/{volunteer.edit_token}"
+    
+    utils.send_edit_link_email(volunteer.email, volunteer.name, link)
+    return {"message": "Link de edição enviado para o e-mail."}
+
+
+@app.get("/volunteers/edit/{token}", response_model=schemas.VolunteerWithEmail, summary="Obter dados para edição via token", description="Retorna os dados do voluntário se o token for válido e não expirado.")
+def get_volunteer_for_edit(token: str, db: Session = Depends(get_db)):
+    volunteer = crud.get_volunteer_by_token(db, token)
+    if not volunteer:
+        raise HTTPException(status_code=404, detail="Link inválido")
+    
+    # Check expiry (UX check)
+    now = datetime.now(timezone.utc)
+    expiry = volunteer.edit_token_expires_at
+    if expiry:
+         if expiry.tzinfo is None:
+             expiry = expiry.replace(tzinfo=timezone.utc)
+         
+         if expiry < now:
+             raise HTTPException(status_code=400, detail="Link expirado")
+    else:
+         raise HTTPException(status_code=400, detail="Link inválido")
+
+    return volunteer
+
+
+@app.patch("/volunteers/edit/{token}", response_model=schemas.Volunteer, summary="Atualizar perfil via token", description="Atualiza os campos permitidos do voluntário. Respeita limite de 2 edições/dia.")
+def update_volunteer_profile(
+    token: str, 
+    profile_data: schemas.VolunteerUpdateProfile, 
+    db: Session = Depends(get_db)
+):
+    volunteer, error = crud.update_volunteer_profile_by_token(db, token, profile_data)
+    if error:
+        raise HTTPException(status_code=400, detail=error)
+    return volunteer
 
 
 @app.patch("/volunteers/{volunteer_id}/status/", response_model=schemas.Volunteer)

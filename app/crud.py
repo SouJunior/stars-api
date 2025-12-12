@@ -2,7 +2,8 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, func
 from . import models, schemas
 from app.auth import get_password_hash
-from datetime import datetime, timedelta, timezone
+from app.utils import generate_edit_token
+from datetime import datetime, timedelta, timezone, date
 
 try:
     from zoneinfo import ZoneInfo
@@ -219,3 +220,64 @@ def get_dashboard_stats(db: Session):
         "total_volunteers_by_squad": stats_by_squad,
         "total_volunteers_registered_today": count_today
     }
+
+def create_volunteer_edit_token(db: Session, email: str):
+    volunteer = get_volunteer_by_email(db, email)
+    if not volunteer:
+        return None
+    
+    token = generate_edit_token()
+    # Expire in 1 hour. Using UTC for consistency.
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
+    
+    volunteer.edit_token = token
+    volunteer.edit_token_expires_at = expires_at
+    db.commit()
+    db.refresh(volunteer)
+    return volunteer
+
+def get_volunteer_by_token(db: Session, token: str):
+    return db.query(models.Volunteer).filter(models.Volunteer.edit_token == token).first()
+
+def update_volunteer_profile_by_token(db: Session, token: str, profile_data: schemas.VolunteerUpdateProfile):
+    volunteer = get_volunteer_by_token(db, token)
+    if not volunteer:
+        return None, "Token inválido"
+    
+    # Check Expiration
+    # Ensure both are offset-aware or both naive. 
+    # If DB returns naive, assume UTC if we stored UTC.
+    now = datetime.now(timezone.utc)
+    if volunteer.edit_token_expires_at:
+        expiry = volunteer.edit_token_expires_at
+        if expiry.tzinfo is None:
+            expiry = expiry.replace(tzinfo=timezone.utc)
+        
+        if expiry < now:
+            return None, "Link expirado"
+    else:
+        return None, "Token inválido"
+
+    # Check Daily Limit
+    today = date.today()
+    if volunteer.last_edit_date != today:
+        volunteer.daily_edits_count = 0
+        volunteer.last_edit_date = today
+    
+    if volunteer.daily_edits_count >= 2:
+        return None, "Limite diário de edições atingido (2 alterações por dia)"
+
+    # Update Fields
+    if profile_data.name:
+        volunteer.name = profile_data.name
+    if profile_data.linkedin:
+        volunteer.linkedin = profile_data.linkedin
+    # Allow updating phone/discord to null/empty if passed, or new value
+    volunteer.phone = profile_data.phone
+    volunteer.discord = profile_data.discord
+    
+    volunteer.daily_edits_count += 1
+    
+    db.commit()
+    db.refresh(volunteer)
+    return volunteer, None
