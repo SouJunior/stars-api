@@ -214,11 +214,15 @@ def get_dashboard_stats(db: Session):
     count_today = db.query(models.Volunteer).filter(
         models.Volunteer.created_at >= start_of_day_utc
     ).count()
+
+    # 4. Total volunteers
+    total_volunteers = db.query(models.Volunteer).count()
     
     return {
         "total_volunteers_by_status": stats_by_status,
         "total_volunteers_by_squad": stats_by_squad,
-        "total_volunteers_registered_today": count_today
+        "total_volunteers_registered_today": count_today,
+        "total_volunteers": total_volunteers
     }
 
 def create_volunteer_edit_token(db: Session, email: str):

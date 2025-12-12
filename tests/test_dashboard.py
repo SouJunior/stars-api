@@ -112,3 +112,6 @@ def test_dashboard_stats():
     # Verify today count
     # v2 and v3 are today. v1 is yesterday. Total 2.
     assert data['total_volunteers_registered_today'] == 2
+
+    # Verify total volunteers
+    assert data['total_volunteers'] == 3
