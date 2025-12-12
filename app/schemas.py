@@ -119,6 +119,7 @@ class VolunteerWithEmail(Volunteer):
 
 class VolunteerPublic(VolunteerCommon):
     id: int
+    discord: Optional[str] = None
     jobtitle_id: int
     status_id: Optional[int] = None
     squad_id: Optional[int] = None

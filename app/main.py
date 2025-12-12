@@ -178,6 +178,16 @@ def get_volunteer_by_id(
     return db_volunteer
 
 
+@app.get("/volunteers/{volunteer_id}/public", response_model=schemas.VolunteerPublic, summary="Obter perfil público do voluntário", description="Retorna os dados públicos do voluntário (sem telefone/email).")
+def get_volunteer_public_profile(
+    volunteer_id: int, db: Session = Depends(get_db)
+):
+    db_volunteer = crud.get_volunteer_by_id(db, volunteer_id=volunteer_id)
+    if db_volunteer is None:
+        raise HTTPException(status_code=404, detail="Volunteer not found")
+    return db_volunteer
+
+
 @app.post("/volunteers/request-edit-link", summary="Solicitar link de edição", description="Envia um link com token para o email do voluntário para edição de perfil.")
 def request_edit_link(
     request: schemas.VolunteerUpdateLinkRequest,
