@@ -54,14 +54,55 @@ def test_get_volunteer_by_email_hides_phone():
     db.close()
 
     # Call endpoint
-    response = client.get("/volunteer/privacy@example.com")
+    response = client.get("/volunteer/search?email=privacy@example.com")
     assert response.status_code == 200
     data = response.json()
     
+    # Verify response is a list
+    assert isinstance(data, list)
+    assert len(data) == 1
+    item = data[0]
+
     # Verify phone is NOT present
-    assert "phone" not in data
-    assert data["name"] == "Privacy Tester"
-    assert data["email"] == "privacy@example.com"
+    assert "phone" not in item
+    assert item["name"] == "Privacy Tester"
+    assert item["email"] == "privacy@example.com"
+
+def test_search_volunteer_by_jobtitle_hides_phone():
+    db = TestingSessionLocal()
+    
+    # Create Job Title
+    job = models.JobTitle(title="PrivacyDev", is_active=True)
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+    
+    # Create Volunteer with phone
+    vol = models.Volunteer(
+        name="JobTitle Tester",
+        email="jobtitle@example.com",
+        linkedin="https://linkedin.com/in/jobtitle",
+        phone="+1234567890",
+        jobtitle_id=job.id,
+        is_active=True
+    )
+    db.add(vol)
+    db.commit()
+    db.close()
+
+    # Call endpoint
+    response = client.get(f"/volunteer/search?jobtitle_id={job.id}")
+    assert response.status_code == 200
+    data = response.json()
+    
+    # Verify response is a list
+    assert isinstance(data, list)
+    assert len(data) >= 1
+    item = data[0]
+
+    # Verify phone is NOT present
+    assert "phone" not in item
+    assert item["name"] == "JobTitle Tester"
 
 def test_get_volunteer_by_id_shows_phone():
     db = TestingSessionLocal()

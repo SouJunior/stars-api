@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, DateTime, Date
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, DateTime, Date, Table
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -39,6 +39,13 @@ class JobTitle(Base):
     volunteers = relationship("Volunteer", back_populates="jobtitle")
 
 
+project_squad_association = Table(
+    'project_squad', Base.metadata,
+    Column('project_id', Integer, ForeignKey('project.id'), primary_key=True),
+    Column('squad_id', Integer, ForeignKey('squad.id'), primary_key=True)
+)
+
+
 class Squad(Base):
     __tablename__ = "squad"
 
@@ -46,6 +53,18 @@ class Squad(Base):
     name = Column(String(50), unique=True, index=True)
 
     volunteers = relationship("Volunteer", back_populates="squad")
+    projects = relationship("Project", secondary=project_squad_association, back_populates="squads")
+
+
+class Project(Base):
+    __tablename__ = "project"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(100), index=True)
+    description = Column(Text)
+    link = Column(String(255))
+
+    squads = relationship("Squad", secondary=project_squad_association, back_populates="projects")
 
 
 class VolunteerStatus(Base):
@@ -56,6 +75,16 @@ class VolunteerStatus(Base):
     description = Column(String(255))
 
     volunteers = relationship("Volunteer", back_populates="status")
+
+
+class VolunteerType(Base):
+    __tablename__ = "volunteer_type"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(50), unique=True, index=True)
+    description = Column(String(255))
+
+    volunteers = relationship("Volunteer", back_populates="volunteer_type")
 
 
 class Volunteer(Base):
@@ -70,11 +99,13 @@ class Volunteer(Base):
     is_active = Column(Boolean, default=True)
     jobtitle_id = Column(Integer, ForeignKey("jobtitle.id"))
     status_id = Column(Integer, ForeignKey("volunteer_status.id"), nullable=True)
+    volunteer_type_id = Column(Integer, ForeignKey("volunteer_type.id"), nullable=True)
     squad_id = Column(Integer, ForeignKey("squad.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     jobtitle = relationship("JobTitle", back_populates="volunteers")
     status = relationship("VolunteerStatus", back_populates="volunteers")
+    volunteer_type = relationship("VolunteerType", back_populates="volunteers")
     squad = relationship("Squad", back_populates="volunteers")
     status_history = relationship("VolunteerStatusHistory", back_populates="volunteer")
 

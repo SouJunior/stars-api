@@ -130,25 +130,32 @@ def get_volunteers(
     email: Optional[str] = Query(None, description="Filtrar por email (busca parcial)"), 
     jobtitle_id: Optional[int] = None, 
     status_id: Optional[int] = None, 
+    volunteer_type_id: Optional[int] = None,
     squad_id: Optional[int] = None,
     order: str = Query("desc", enum=["asc", "desc"], description="Ordenação por data de criação"),
     db: Session = Depends(get_db)
 ):
-    db_volunteers = crud.get_volunteers(db, skip=skip, limit=limit, name=name, email=email, jobtitle_id=jobtitle_id, status_id=status_id, squad_id=squad_id, order=order)
+    db_volunteers = crud.get_volunteers(db, skip=skip, limit=limit, name=name, email=email, jobtitle_id=jobtitle_id, status_id=status_id, volunteer_type_id=volunteer_type_id, squad_id=squad_id, order=order)
     if db_volunteers is None:
         raise HTTPException(status_code=404, detail="Volunteer not found")
     return db_volunteers
 
 
-# volunteer by email
-@app.get("/volunteer/{email}", response_model=schemas.VolunteerPublic)
-def get_volunteers_by_email(
-    skip: int = 0, limit: int = 100, db: Session = Depends(get_db), email: str = ""
+# volunteer public search
+@app.get("/volunteer/search", response_model=list[schemas.VolunteerPublic])
+def search_volunteers_public(
+    skip: int = 0, 
+    limit: int = 100, 
+    email: Optional[str] = Query(None, description="Filtrar por email (busca parcial)"),
+    jobtitle_id: Optional[int] = Query(None, description="Filtrar por cargo"),
+    db: Session = Depends(get_db)
 ):
-    db_volunteer = crud.get_volunteer_by_email(db, email=email)
-    if db_volunteer is None:
-        raise HTTPException(status_code=404, detail="Volunteer not found")
-    return db_volunteer
+    db_volunteers = crud.get_volunteers(
+        db, skip=skip, limit=limit, 
+        email=email, 
+        jobtitle_id=jobtitle_id
+    )
+    return db_volunteers
 
 
 @app.post("/volunteer", response_model=schemas.Volunteer)
@@ -272,6 +279,40 @@ def update_volunteer_squad(
     return updated_volunteer
 
 
+@app.patch("/volunteers/{volunteer_id}/type/", response_model=schemas.Volunteer)
+def update_volunteer_type(
+    volunteer_id: int,
+    new_type_id: int,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    db_type = db.query(models.VolunteerType).filter(models.VolunteerType.id == new_type_id).first()
+    if not db_type:
+        raise HTTPException(status_code=404, detail="New volunteer type not found")
+
+    updated_volunteer = crud.update_volunteer_type(db, volunteer_id, new_type_id)
+    if updated_volunteer is None:
+        raise HTTPException(status_code=404, detail="Volunteer not found")
+    return updated_volunteer
+
+
+@app.get("/volunteer-types/", response_model=list[schemas.VolunteerType])
+def get_volunteer_types(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    return crud.get_volunteer_types(db, skip=skip, limit=limit)
+
+
+@app.post("/volunteer-types/", response_model=schemas.VolunteerType)
+def create_volunteer_type(
+    type_data: schemas.VolunteerTypeBase,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    db_type = db.query(models.VolunteerType).filter(models.VolunteerType.name == type_data.name).first()
+    if db_type:
+        raise HTTPException(status_code=400, detail="Volunteer Type with this name already exists")
+    return crud.create_volunteer_type(db=db, type_data=type_data)
+
+
 @app.get("/jobtitles/", response_model=list[schemas.JobTitle])
 def get_jobtitles(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     db_jobtitles = crud.get_jobtitles(db)
@@ -353,3 +394,45 @@ def send_email(email, name):
         print("Exception when calling AccountApi->get_account: %s\n" % e)
 
     return
+
+
+# Projects
+@app.post("/projects/", response_model=schemas.Project, summary="Criar projeto", description="Cria um novo projeto. Requer autenticação.")
+def create_project(
+    project: schemas.ProjectCreate,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    return crud.create_project(db=db, project=project)
+
+@app.get("/projects/", response_model=list[schemas.Project], summary="Listar projetos", description="Retorna uma lista de todos os projetos. Requer autenticação.")
+def get_projects(
+    skip: int = 0, 
+    limit: int = 100, 
+    db: Session = Depends(get_db), 
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    return crud.get_projects(db, skip=skip, limit=limit)
+
+@app.get("/projects/{project_id}", response_model=schemas.Project, summary="Obter projeto por ID", description="Retorna os detalhes de um projeto específico. Requer autenticação.")
+def get_project(
+    project_id: int, 
+    db: Session = Depends(get_db), 
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    db_project = crud.get_project(db, project_id=project_id)
+    if db_project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return db_project
+
+@app.delete("/projects/{project_id}", response_model=schemas.Project, summary="Deletar projeto", description="Deleta um projeto existente. Requer autenticação.")
+def delete_project(
+    project_id: int, 
+    db: Session = Depends(get_db), 
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    db_project = crud.delete_project(db, project_id=project_id)
+    if db_project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return db_project
+

@@ -46,10 +46,11 @@ def create_user_item(db: Session, item: schemas.ItemCreate, user_id: int):
     db.refresh(db_item)
     return db_item
 
-def get_volunteers(db: Session, skip: int = 0, limit: int = 100, name: str = None, email: str = None, jobtitle_id: int = None, status_id: int = None, squad_id: int = None, order: str = "desc"):
+def get_volunteers(db: Session, skip: int = 0, limit: int = 100, name: str = None, email: str = None, jobtitle_id: int = None, status_id: int = None, volunteer_type_id: int = None, squad_id: int = None, order: str = "desc"):
     query = db.query(models.Volunteer).options(
         joinedload(models.Volunteer.jobtitle),
         joinedload(models.Volunteer.status),
+        joinedload(models.Volunteer.volunteer_type),
         joinedload(models.Volunteer.squad),
         joinedload(models.Volunteer.status_history).joinedload(models.VolunteerStatusHistory.status)
     )
@@ -61,6 +62,8 @@ def get_volunteers(db: Session, skip: int = 0, limit: int = 100, name: str = Non
         query = query.filter(models.Volunteer.jobtitle_id == jobtitle_id)
     if status_id:
         query = query.filter(models.Volunteer.status_id == status_id)
+    if volunteer_type_id:
+        query = query.filter(models.Volunteer.volunteer_type_id == volunteer_type_id)
     if squad_id:
         query = query.filter(models.Volunteer.squad_id == squad_id)
 
@@ -75,6 +78,7 @@ def get_volunteer_by_id(db: Session, volunteer_id: int):
     return db.query(models.Volunteer).options(
         joinedload(models.Volunteer.jobtitle),
         joinedload(models.Volunteer.status),
+        joinedload(models.Volunteer.volunteer_type),
         joinedload(models.Volunteer.squad),
         joinedload(models.Volunteer.status_history).joinedload(models.VolunteerStatusHistory.status)
     ).filter(models.Volunteer.id == volunteer_id).first()
@@ -84,6 +88,7 @@ def get_volunteer_by_email(db: Session, email: str):
         .options(
             joinedload(models.Volunteer.jobtitle),
             joinedload(models.Volunteer.status),
+            joinedload(models.Volunteer.volunteer_type),
             joinedload(models.Volunteer.squad),
             joinedload(models.Volunteer.status_history).joinedload(models.VolunteerStatusHistory.status)
         )\
@@ -94,6 +99,12 @@ def create_volunteer(db: Session, volunteer: schemas.VolunteerCreate, jobtitle_i
     default_status = db.query(models.VolunteerStatus).filter(models.VolunteerStatus.name == "INTERESTED").first()
     if not default_status:
         raise ValueError("Default status 'INTERESTED' not found.")
+    
+    # Get default volunteer type "Junior" if not provided
+    if not volunteer.volunteer_type_id:
+        default_type = db.query(models.VolunteerType).filter(models.VolunteerType.name == "Junior").first()
+        if default_type:
+            volunteer.volunteer_type_id = default_type.id
 
     db_volunteer = models.Volunteer(**volunteer.dict(exclude_unset=True))
     # Ensure jobtitle_id is set if it wasn't in the dict (though schema says it is required)
@@ -159,6 +170,28 @@ def update_volunteer_status(db: Session, volunteer_id: int, new_status_id: int):
         db.add(status_history_entry)
 
         db_volunteer.status_id = new_status_id
+        db.commit()
+        db.refresh(db_volunteer)
+    return db_volunteer
+
+# Volunteer Type CRUD
+def get_volunteer_types(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.VolunteerType).offset(skip).limit(limit).all()
+
+def create_volunteer_type(db: Session, type_data: schemas.VolunteerTypeBase):
+    db_type = models.VolunteerType(name=type_data.name, description=type_data.description)
+    db.add(db_type)
+    db.commit()
+    db.refresh(db_type)
+    return db_type
+
+def update_volunteer_type(db: Session, volunteer_id: int, new_type_id: int):
+    db_volunteer = db.query(models.Volunteer).filter(models.Volunteer.id == volunteer_id).first()
+    if not db_volunteer:
+        return None
+
+    if db_volunteer.volunteer_type_id != new_type_id:
+        db_volunteer.volunteer_type_id = new_type_id
         db.commit()
         db.refresh(db_volunteer)
     return db_volunteer
@@ -285,3 +318,37 @@ def update_volunteer_profile_by_token(db: Session, token: str, profile_data: sch
     db.commit()
     db.refresh(volunteer)
     return volunteer, None
+
+
+# Project CRUD
+def create_project(db: Session, project: schemas.ProjectCreate):
+    db_project = models.Project(
+        name=project.name,
+        description=project.description,
+        link=project.link
+    )
+    
+    if project.squad_ids:
+        squads = db.query(models.Squad).filter(models.Squad.id.in_(project.squad_ids)).all()
+        db_project.squads = squads
+        
+    db.add(db_project)
+    db.commit()
+    db.refresh(db_project)
+    return db_project
+
+
+def get_projects(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.Project).options(joinedload(models.Project.squads)).offset(skip).limit(limit).all()
+
+
+def get_project(db: Session, project_id: int):
+    return db.query(models.Project).options(joinedload(models.Project.squads)).filter(models.Project.id == project_id).first()
+
+
+def delete_project(db: Session, project_id: int):
+    db_project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if db_project:
+        db.delete(db_project)
+        db.commit()
+    return db_project

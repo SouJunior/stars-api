@@ -81,6 +81,16 @@ class VolunteerStatusHistory(VolunteerStatusHistoryBase):
     class Config:
         orm_mode = True
 
+class VolunteerTypeBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+class VolunteerType(VolunteerTypeBase):
+    id: int
+
+    class Config:
+        orm_mode = True
+
 class VolunteerCommon(BaseModel):
     name: str
     linkedin: str
@@ -97,17 +107,20 @@ class VolunteerCreate(VolunteerBase):
     # masked_email: Optional[str] = None
     is_active: Optional[bool] = True
     jobtitle_id: int
+    volunteer_type_id: Optional[int] = None
     squad_id: Optional[int] = None
 
 class Volunteer(VolunteerBase):
     id: int
     jobtitle_id: int
     status_id: Optional[int] = None
+    volunteer_type_id: Optional[int] = None
     squad_id: Optional[int] = None
     masked_email: Optional[str] = None
     created_at: Optional[datetime] = None
     jobtitle: Optional['JobTitle'] = None
     status: Optional[VolunteerStatus] = None
+    volunteer_type: Optional[VolunteerType] = None
     squad: Optional['Squad'] = None
     status_history: list[VolunteerStatusHistory] = []
 
@@ -122,11 +135,13 @@ class VolunteerPublic(VolunteerCommon):
     discord: Optional[str] = None
     jobtitle_id: int
     status_id: Optional[int] = None
+    volunteer_type_id: Optional[int] = None
     squad_id: Optional[int] = None
     masked_email: Optional[str] = None
     created_at: Optional[datetime] = None
     jobtitle: Optional['JobTitle'] = None
     status: Optional[VolunteerStatus] = None
+    volunteer_type: Optional[VolunteerType] = None
     squad: Optional['Squad'] = None
     status_history: list[VolunteerStatusHistory] = []
 
@@ -137,11 +152,13 @@ class VolunteerList(VolunteerBase):
     id: int
     jobtitle_id: int
     status_id: Optional[int] = None
+    volunteer_type_id: Optional[int] = None
     squad_id: Optional[int] = None
     masked_email: Optional[str] = None
     created_at: Optional[datetime] = None
     jobtitle: Optional['JobTitle'] = None
     status: Optional[VolunteerStatus] = None
+    volunteer_type: Optional[VolunteerType] = None
     squad: Optional['Squad'] = None
 
     class Config:
@@ -190,5 +207,23 @@ class VolunteerUpdateProfile(BaseModel):
     linkedin: str
     phone: Optional[str] = None
     discord: Optional[str] = None
+
+
+class ProjectBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+    link: Optional[str] = None
+
+
+class ProjectCreate(ProjectBase):
+    squad_ids: list[int] = []
+
+
+class Project(ProjectBase):
+    id: int
+    squads: list[Squad] = []
+
+    class Config:
+        orm_mode = True
 
 
