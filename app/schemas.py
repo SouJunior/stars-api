@@ -191,9 +191,15 @@ class SquadCount(BaseModel):
     count: int
 
 
+class VolunteerTypeCount(BaseModel):
+    volunteer_type: str
+    count: int
+
+
 class DashboardStats(BaseModel):
     total_volunteers_by_status: list[StatusCount]
     total_volunteers_by_squad: list[SquadCount]
+    total_volunteers_by_type: list[VolunteerTypeCount]
     total_volunteers_registered_today: int
     total_volunteers: int
 

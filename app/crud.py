@@ -170,6 +170,15 @@ def update_volunteer_status(db: Session, volunteer_id: int, new_status_id: int):
         db.add(status_history_entry)
 
         db_volunteer.status_id = new_status_id
+
+        # Check if new status is ACTIVE and if invite hasn't been sent yet
+        active_status = db.query(models.VolunteerStatus).filter(models.VolunteerStatus.name == "ACTIVE").first()
+        if active_status and new_status_id == active_status.id:
+            if not db_volunteer.discord_invite_sent:
+                from app.utils import send_discord_invite_email
+                send_discord_invite_email(db_volunteer.email, db_volunteer.name)
+                db_volunteer.discord_invite_sent = True
+
         db.commit()
         db.refresh(db_volunteer)
     return db_volunteer
@@ -230,7 +239,18 @@ def get_dashboard_stats(db: Session):
 
     stats_by_squad = [{"squad": name, "count": count} for name, count in squad_counts]
 
-    # 3. Registered today (Brasilia)
+    # 3. Group by volunteer type
+    type_counts = db.query(
+        models.VolunteerType.name, func.count(models.Volunteer.id)
+    ).join(
+        models.Volunteer, models.Volunteer.volunteer_type_id == models.VolunteerType.id
+    ).group_by(
+        models.VolunteerType.name
+    ).all()
+
+    stats_by_type = [{"volunteer_type": name, "count": count} for name, count in type_counts]
+
+    # 4. Registered today (Brasilia)
     try:
         tz_brasilia = ZoneInfo("America/Sao_Paulo")
     except Exception:
@@ -254,6 +274,7 @@ def get_dashboard_stats(db: Session):
     return {
         "total_volunteers_by_status": stats_by_status,
         "total_volunteers_by_squad": stats_by_squad,
+        "total_volunteers_by_type": stats_by_type,
         "total_volunteers_registered_today": count_today,
         "total_volunteers": total_volunteers
     }
