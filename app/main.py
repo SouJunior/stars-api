@@ -19,7 +19,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi import Depends, FastAPI
 from datetime import datetime, timedelta, timezone
 from app.database import get_db
-from app import utils
+from app import utils, integrations
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -294,6 +294,25 @@ def update_volunteer_type(
     if updated_volunteer is None:
         raise HTTPException(status_code=404, detail="Volunteer not found")
     return updated_volunteer
+
+
+@app.post("/volunteers/{volunteer_id}/check-apoiase", response_model=schemas.Volunteer, summary="Verificar status do APOIA.se", description="Verifica se o voluntário é um apoiador ativo no APOIA.se e atualiza o status.")
+async def check_volunteer_apoiase(
+    volunteer_id: int,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    volunteer = crud.get_volunteer_by_id(db, volunteer_id=volunteer_id)
+    if not volunteer:
+        raise HTTPException(status_code=404, detail="Volunteer not found")
+    
+    is_supporter = await integrations.check_apoiase_status(volunteer.email)
+    
+    volunteer.is_apoiase_supporter = is_supporter
+    db.commit()
+    db.refresh(volunteer)
+    
+    return volunteer
 
 
 @app.get("/volunteer-types/", response_model=list[schemas.VolunteerType])

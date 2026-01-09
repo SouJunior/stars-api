@@ -13,6 +13,8 @@ class __Settings(BaseSettings):
     BREVO_API_KEY: str
     REGISTRATION_CODE: str = "changeme"
     BASE_FRONTEND_URL: str = "http://localhost:5173" # Default for local development
+    APOIASE_API_KEY: str = ""
+    APOIASE_API_SECRET: str = ""
 
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8')
 

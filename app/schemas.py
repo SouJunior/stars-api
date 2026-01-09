@@ -112,6 +112,7 @@ class VolunteerCreate(VolunteerBase):
 
 class Volunteer(VolunteerBase):
     id: int
+    is_apoiase_supporter: Optional[bool] = False
     jobtitle_id: int
     status_id: Optional[int] = None
     volunteer_type_id: Optional[int] = None
@@ -132,6 +133,7 @@ class VolunteerWithEmail(Volunteer):
 
 class VolunteerPublic(VolunteerCommon):
     id: int
+    is_apoiase_supporter: Optional[bool] = False
     discord: Optional[str] = None
     jobtitle_id: int
     status_id: Optional[int] = None
@@ -150,6 +152,7 @@ class VolunteerPublic(VolunteerCommon):
 
 class VolunteerList(VolunteerBase):
     id: int
+    is_apoiase_supporter: Optional[bool] = False
     jobtitle_id: int
     status_id: Optional[int] = None
     volunteer_type_id: Optional[int] = None

@@ -98,6 +98,7 @@ class Volunteer(Base):
     discord = Column(String(255), nullable=True)
     discord_invite_sent = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
+    is_apoiase_supporter = Column(Boolean, default=False)
     jobtitle_id = Column(Integer, ForeignKey("jobtitle.id"))
     status_id = Column(Integer, ForeignKey("volunteer_status.id"), nullable=True)
     volunteer_type_id = Column(Integer, ForeignKey("volunteer_type.id"), nullable=True)
