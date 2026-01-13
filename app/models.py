@@ -1,5 +1,5 @@
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, DateTime, Date, Table
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, foreign, remote
 from sqlalchemy.sql import func
 from sqlalchemy.ext.hybrid import hybrid_property
 
@@ -14,6 +14,13 @@ class User(Base):
     is_active = Column(Boolean, default=True)
 
     items = relationship("Item", back_populates="owner")
+    feedbacks = relationship("Feedback", back_populates="author")
+    volunteer = relationship(
+        "Volunteer",
+        primaryjoin="foreign(User.email) == remote(Volunteer.email)",
+        uselist=False,
+        viewonly=True,
+    )
 
 
 class Item(Base):
@@ -110,6 +117,7 @@ class Volunteer(Base):
     volunteer_type = relationship("VolunteerType", back_populates="volunteers")
     squad = relationship("Squad", back_populates="volunteers")
     status_history = relationship("VolunteerStatusHistory", back_populates="volunteer")
+    feedbacks = relationship("Feedback", back_populates="volunteer")
 
     edit_token = Column(String(255), nullable=True, index=True)
     edit_token_expires_at = Column(DateTime, nullable=True)
@@ -134,3 +142,17 @@ class VolunteerStatusHistory(Base):
 
     volunteer = relationship("Volunteer", back_populates="status_history")
     status = relationship("VolunteerStatus")
+
+
+class Feedback(Base):
+    __tablename__ = "feedbacks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    content = Column(Text, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    volunteer_id = Column(Integer, ForeignKey("volunteer.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    author = relationship("User", back_populates="feedbacks")
+    volunteer = relationship("Volunteer", back_populates="feedbacks")

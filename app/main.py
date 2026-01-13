@@ -405,7 +405,7 @@ def send_email(email, name):
             },
         )  # SendSmtpEmail | Values to send a transactional email
 
-        print("Email: ", os.getenv("BREVO_API_KEY"))
+        print("Email: ", os.getenv("BREVO_API_KEY") )
         api_response = api_instance.send_transac_email(send_smtp_email)
         pprint(api_response)
 
@@ -455,3 +455,61 @@ def delete_project(
         raise HTTPException(status_code=404, detail="Project not found")
     return db_project
 
+
+# Feedback
+@app.post("/volunteers/{volunteer_id}/feedbacks", response_model=schemas.FeedbackRead, summary="Criar feedback", description="Cria um novo feedback para um voluntário. Requer autenticação.")
+def create_feedback(
+    volunteer_id: int, 
+    feedback: schemas.FeedbackCreate, 
+    db: Session = Depends(get_db), 
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    # Check if volunteer exists
+    db_volunteer = crud.get_volunteer_by_id(db, volunteer_id=volunteer_id)
+    if not db_volunteer:
+        raise HTTPException(status_code=404, detail="Volunteer not found")
+        
+    return crud.create_feedback(db=db, feedback=feedback, user_id=current_user.id, volunteer_id=volunteer_id)
+
+@app.get("/volunteers/{volunteer_id}/feedbacks", response_model=list[schemas.FeedbackRead], summary="Listar feedbacks", description="Retorna os feedbacks de um voluntário.")
+def get_feedbacks(
+    volunteer_id: int, 
+    skip: int = 0, 
+    limit: int = 100, 
+    db: Session = Depends(get_db)
+):
+    db_volunteer = crud.get_volunteer_by_id(db, volunteer_id=volunteer_id)
+    if not db_volunteer:
+        raise HTTPException(status_code=404, detail="Volunteer not found")
+    return crud.get_feedbacks_for_volunteer(db, volunteer_id=volunteer_id, skip=skip, limit=limit)
+
+@app.put("/feedbacks/{feedback_id}", response_model=schemas.FeedbackRead, summary="Atualizar feedback", description="Atualiza um feedback existente. Apenas o autor pode atualizar.")
+def update_feedback(
+    feedback_id: int, 
+    feedback: schemas.FeedbackUpdate, 
+    db: Session = Depends(get_db), 
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    db_feedback = crud.get_feedback(db, feedback_id=feedback_id)
+    if not db_feedback:
+        raise HTTPException(status_code=404, detail="Feedback not found")
+        
+    if db_feedback.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to update this feedback")
+        
+    return crud.update_feedback(db, feedback_id=feedback_id, feedback=feedback)
+
+@app.delete("/feedbacks/{feedback_id}", response_model=schemas.FeedbackRead, summary="Deletar feedback", description="Deleta um feedback existente. Apenas o autor pode deletar.")
+def delete_feedback(
+    feedback_id: int, 
+    db: Session = Depends(get_db), 
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    db_feedback = crud.get_feedback(db, feedback_id=feedback_id)
+    if not db_feedback:
+        raise HTTPException(status_code=404, detail="Feedback not found")
+        
+    if db_feedback.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this feedback")
+        
+    return crud.delete_feedback(db, feedback_id=feedback_id)

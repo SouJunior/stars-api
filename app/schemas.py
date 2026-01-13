@@ -33,6 +33,7 @@ class User(UserBase):
     id: int
     is_active: bool
     items: list[Item] = []
+    volunteer: Optional['Volunteer'] = None
 
     class Config:
         orm_mode = True
@@ -99,16 +100,37 @@ class VolunteerCommon(BaseModel):
 class VolunteerBase(VolunteerCommon):
     phone: Optional[str] = None
     discord: Optional[str] = None
-    # email: str
+    email: str
 
 class VolunteerCreate(VolunteerBase):
     # name: str
-    email: str
+    # email: str
     # masked_email: Optional[str] = None
     is_active: Optional[bool] = True
     jobtitle_id: int
     volunteer_type_id: Optional[int] = None
     squad_id: Optional[int] = None
+
+class FeedbackBase(BaseModel):
+    content: str
+
+class FeedbackCreate(FeedbackBase):
+    pass
+
+class FeedbackUpdate(FeedbackBase):
+    pass
+
+class FeedbackRead(FeedbackBase):
+    id: int
+    user_id: int
+    volunteer_id: int
+    content: str
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    author: Optional[UserBase] = None
+
+    class Config:
+        orm_mode = True
 
 class Volunteer(VolunteerBase):
     id: int
@@ -124,12 +146,13 @@ class Volunteer(VolunteerBase):
     volunteer_type: Optional[VolunteerType] = None
     squad: Optional['Squad'] = None
     status_history: list[VolunteerStatusHistory] = []
+    feedbacks: list[FeedbackRead] = []
 
     class Config:
         orm_mode = True
 
 class VolunteerWithEmail(Volunteer):
-    email: str
+    pass
 
 class VolunteerPublic(VolunteerCommon):
     id: int
@@ -146,6 +169,7 @@ class VolunteerPublic(VolunteerCommon):
     volunteer_type: Optional[VolunteerType] = None
     squad: Optional['Squad'] = None
     status_history: list[VolunteerStatusHistory] = []
+    feedbacks: list[FeedbackRead] = []
 
     class Config:
         orm_mode = True
@@ -235,4 +259,4 @@ class Project(ProjectBase):
     class Config:
         orm_mode = True
 
-
+User.model_rebuild()

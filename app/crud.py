@@ -80,7 +80,8 @@ def get_volunteer_by_id(db: Session, volunteer_id: int):
         joinedload(models.Volunteer.status),
         joinedload(models.Volunteer.volunteer_type),
         joinedload(models.Volunteer.squad),
-        joinedload(models.Volunteer.status_history).joinedload(models.VolunteerStatusHistory.status)
+        joinedload(models.Volunteer.status_history).joinedload(models.VolunteerStatusHistory.status),
+        joinedload(models.Volunteer.feedbacks).joinedload(models.Feedback.author)
     ).filter(models.Volunteer.id == volunteer_id).first()
 
 def get_volunteer_by_email(db: Session, email: str):
@@ -373,3 +374,37 @@ def delete_project(db: Session, project_id: int):
         db.delete(db_project)
         db.commit()
     return db_project
+
+
+# Feedback CRUD
+def create_feedback(db: Session, feedback: schemas.FeedbackCreate, user_id: int, volunteer_id: int):
+    db_feedback = models.Feedback(**feedback.dict(), user_id=user_id, volunteer_id=volunteer_id)
+    db.add(db_feedback)
+    db.commit()
+    db.refresh(db_feedback)
+    return db_feedback
+
+def get_feedbacks_for_volunteer(db: Session, volunteer_id: int, skip: int = 0, limit: int = 100):
+    return db.query(models.Feedback).filter(models.Feedback.volunteer_id == volunteer_id)\
+        .order_by(models.Feedback.created_at.desc())\
+        .offset(skip).limit(limit).all()
+
+def get_feedback(db: Session, feedback_id: int):
+    return db.query(models.Feedback).filter(models.Feedback.id == feedback_id).first()
+
+def update_feedback(db: Session, feedback_id: int, feedback: schemas.FeedbackUpdate):
+    db_feedback = db.query(models.Feedback).filter(models.Feedback.id == feedback_id).first()
+    if not db_feedback:
+        return None
+    
+    db_feedback.content = feedback.content
+    db.commit()
+    db.refresh(db_feedback)
+    return db_feedback
+
+def delete_feedback(db: Session, feedback_id: int):
+    db_feedback = db.query(models.Feedback).filter(models.Feedback.id == feedback_id).first()
+    if db_feedback:
+        db.delete(db_feedback)
+        db.commit()
+    return db_feedback
