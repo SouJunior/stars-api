@@ -128,6 +128,8 @@ class FeedbackRead(FeedbackBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     author: Optional[UserBase] = None
+    author_name: str
+    author_linkedin: Optional[str] = None
 
     class Config:
         orm_mode = True

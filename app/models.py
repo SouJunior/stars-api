@@ -156,3 +156,15 @@ class Feedback(Base):
 
     author = relationship("User", back_populates="feedbacks")
     volunteer = relationship("Volunteer", back_populates="feedbacks")
+
+    @property
+    def author_name(self):
+        if self.author and self.author.volunteer:
+            return self.author.volunteer.name
+        return "***"
+
+    @property
+    def author_linkedin(self):
+        if self.author and self.author.volunteer:
+            return self.author.volunteer.linkedin
+        return None

@@ -81,7 +81,7 @@ def get_volunteer_by_id(db: Session, volunteer_id: int):
         joinedload(models.Volunteer.volunteer_type),
         joinedload(models.Volunteer.squad),
         joinedload(models.Volunteer.status_history).joinedload(models.VolunteerStatusHistory.status),
-        joinedload(models.Volunteer.feedbacks).joinedload(models.Feedback.author)
+        joinedload(models.Volunteer.feedbacks).joinedload(models.Feedback.author).joinedload(models.User.volunteer)
     ).filter(models.Volunteer.id == volunteer_id).first()
 
 def get_volunteer_by_email(db: Session, email: str):
@@ -388,7 +388,9 @@ def create_feedback(db: Session, feedback: schemas.FeedbackCreate, user_id: int,
     return db_feedback
 
 def get_feedbacks_for_volunteer(db: Session, volunteer_id: int, skip: int = 0, limit: int = 100):
-    return db.query(models.Feedback).filter(models.Feedback.volunteer_id == volunteer_id)\
+    return db.query(models.Feedback).options(
+        joinedload(models.Feedback.author).joinedload(models.User.volunteer)
+    ).filter(models.Feedback.volunteer_id == volunteer_id)\
         .order_by(models.Feedback.created_at.desc())\
         .offset(skip).limit(limit).all()
 
