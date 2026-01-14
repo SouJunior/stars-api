@@ -331,6 +331,9 @@ def update_volunteer_profile_by_token(db: Session, token: str, profile_data: sch
         volunteer.name = profile_data.name
     if profile_data.linkedin:
         volunteer.linkedin = profile_data.linkedin
+    if profile_data.volunteer_type_id:
+        volunteer.volunteer_type_id = profile_data.volunteer_type_id
+    
     # Allow updating phone/discord to null/empty if passed, or new value
     volunteer.phone = profile_data.phone
     volunteer.discord = profile_data.discord

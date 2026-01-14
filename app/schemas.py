@@ -240,6 +240,7 @@ class VolunteerUpdateProfile(BaseModel):
     linkedin: str
     phone: Optional[str] = None
     discord: Optional[str] = None
+    volunteer_type_id: Optional[int] = None
 
 
 class ProjectBase(BaseModel):
