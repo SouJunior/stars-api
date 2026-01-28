@@ -48,6 +48,7 @@ class JobTitle(BaseModel):
 
 class SquadBase(BaseModel):
     name: str
+    description: Optional[str] = None
 
 class SquadCreate(SquadBase):
     pass

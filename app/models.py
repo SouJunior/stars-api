@@ -58,6 +58,7 @@ class Squad(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(50), unique=True, index=True)
+    description = Column(String(255), nullable=True)
 
     volunteers = relationship("Volunteer", back_populates="squad")
     projects = relationship("Project", secondary=project_squad_association, back_populates="squads")

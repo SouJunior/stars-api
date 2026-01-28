@@ -6,6 +6,8 @@ async def check_apoiase_status(email: str) -> bool:
         print("APOIA.se credentials not set.")
         return False
     
+    # Normalize email to lowercase for case-insensitive matching
+    email = email.lower()
     url = f"https://api.apoia.se/backers/charges/{email}"
     headers = {
         "Accept": "*/*",

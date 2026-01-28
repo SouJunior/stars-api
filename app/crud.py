@@ -137,11 +137,31 @@ def get_jobtitles(db: Session, skip: int = 0, limit: int = 100):
 def get_squads(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.Squad).offset(skip).limit(limit).all()
 
+def get_squad(db: Session, squad_id: int):
+    return db.query(models.Squad).filter(models.Squad.id == squad_id).first()
+
 def create_squad(db: Session, squad: schemas.SquadCreate):
-    db_squad = models.Squad(name=squad.name)
+    db_squad = models.Squad(name=squad.name, description=squad.description)
     db.add(db_squad)
     db.commit()
     db.refresh(db_squad)
+    return db_squad
+
+def update_squad(db: Session, squad_id: int, squad: schemas.SquadCreate):
+    db_squad = db.query(models.Squad).filter(models.Squad.id == squad_id).first()
+    if not db_squad:
+        return None
+    db_squad.name = squad.name
+    db_squad.description = squad.description
+    db.commit()
+    db.refresh(db_squad)
+    return db_squad
+
+def delete_squad(db: Session, squad_id: int):
+    db_squad = db.query(models.Squad).filter(models.Squad.id == squad_id).first()
+    if db_squad:
+        db.delete(db_squad)
+        db.commit()
     return db_squad
 
 

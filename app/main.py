@@ -357,6 +357,39 @@ def get_squads(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return crud.get_squads(db, skip=skip, limit=limit)
 
 
+@app.get("/squads/{squad_id}", response_model=schemas.Squad)
+def get_squad(squad_id: int, db: Session = Depends(get_db)):
+    db_squad = crud.get_squad(db, squad_id=squad_id)
+    if db_squad is None:
+        raise HTTPException(status_code=404, detail="Squad not found")
+    return db_squad
+
+
+@app.put("/squad/{squad_id}", response_model=schemas.Squad)
+def update_squad(
+    squad_id: int,
+    squad: schemas.SquadCreate,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    updated_squad = crud.update_squad(db, squad_id=squad_id, squad=squad)
+    if updated_squad is None:
+        raise HTTPException(status_code=404, detail="Squad not found")
+    return updated_squad
+
+
+@app.delete("/squad/{squad_id}", response_model=schemas.Squad)
+def delete_squad(
+    squad_id: int,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    db_squad = crud.delete_squad(db, squad_id=squad_id)
+    if db_squad is None:
+        raise HTTPException(status_code=404, detail="Squad not found")
+    return db_squad
+
+
 @app.post("/volunteer-statuses/", response_model=schemas.VolunteerStatus)
 def create_volunteer_status(
     status: schemas.VolunteerStatusCreate,
