@@ -135,10 +135,26 @@ def get_jobtitles(db: Session, skip: int = 0, limit: int = 100):
 
 # Squad CRUD
 def get_squads(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.Squad).offset(skip).limit(limit).all()
+    squads = db.query(models.Squad).options(
+        joinedload(models.Squad.volunteers).joinedload(models.Volunteer.jobtitle),
+        joinedload(models.Squad.volunteers).joinedload(models.Volunteer.volunteer_type)
+    ).offset(skip).limit(limit).all()
+    
+    for squad in squads:
+        squad.members_count = len(squad.volunteers)
+        
+    return squads
 
 def get_squad(db: Session, squad_id: int):
-    return db.query(models.Squad).filter(models.Squad.id == squad_id).first()
+    squad = db.query(models.Squad).options(
+        joinedload(models.Squad.volunteers).joinedload(models.Volunteer.jobtitle),
+        joinedload(models.Squad.volunteers).joinedload(models.Volunteer.volunteer_type)
+    ).filter(models.Squad.id == squad_id).first()
+    
+    if squad:
+        squad.members_count = len(squad.volunteers)
+        
+    return squad
 
 def create_squad(db: Session, squad: schemas.SquadCreate):
     db_squad = models.Squad(name=squad.name, description=squad.description)

@@ -46,6 +46,15 @@ class JobTitle(BaseModel):
     class Config:
         orm_mode = True
 
+class VolunteerInSquad(BaseModel):
+    id: int
+    name: str
+    jobtitle: Optional['JobTitle'] = None
+    volunteer_type: Optional['VolunteerType'] = None
+    
+    class Config:
+        orm_mode = True
+
 class SquadBase(BaseModel):
     name: str
     description: Optional[str] = None
@@ -55,6 +64,8 @@ class SquadCreate(SquadBase):
 
 class Squad(SquadBase):
     id: int
+    volunteers: list[VolunteerInSquad] = []
+    members_count: Optional[int] = 0
 
     class Config:
         orm_mode = True
