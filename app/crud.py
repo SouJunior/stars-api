@@ -157,18 +157,21 @@ def get_squad(db: Session, squad_id: int):
     return squad
 
 def create_squad(db: Session, squad: schemas.SquadCreate):
-    db_squad = models.Squad(name=squad.name, description=squad.description)
+    db_squad = models.Squad(name=squad.name, description=squad.description, discord_role_id=squad.discord_role_id)
     db.add(db_squad)
     db.commit()
     db.refresh(db_squad)
     return db_squad
 
-def update_squad(db: Session, squad_id: int, squad: schemas.SquadCreate):
+def update_squad(db: Session, squad_id: int, squad: schemas.SquadUpdate):
     db_squad = db.query(models.Squad).filter(models.Squad.id == squad_id).first()
     if not db_squad:
         return None
-    db_squad.name = squad.name
-    db_squad.description = squad.description
+
+    for var, value in vars(squad).items():
+        if value is not None:
+            setattr(db_squad, var, value)
+
     db.commit()
     db.refresh(db_squad)
     return db_squad
@@ -449,3 +452,68 @@ def delete_feedback(db: Session, feedback_id: int):
         db.delete(db_feedback)
         db.commit()
     return db_feedback
+
+
+# JobOpening CRUD
+def create_job_opening(db: Session, job: schemas.JobOpeningCreate, user_id: int):
+    db_job = models.JobOpening(**job.dict(), owner_id=user_id)
+    db.add(db_job)
+    db.commit()
+    db.refresh(db_job)
+    return db_job
+
+
+def get_job_openings(db: Session, skip: int = 0, limit: int = 100, active_only: bool = False):
+    query = db.query(models.JobOpening)
+    if active_only:
+        query = query.filter(models.JobOpening.is_active == True)
+    return query.order_by(models.JobOpening.created_at.desc()).offset(skip).limit(limit).all()
+
+
+def get_job_opening(db: Session, job_id: int):
+    return db.query(models.JobOpening).filter(models.JobOpening.id == job_id).first()
+
+
+def update_job_opening(db: Session, job_id: int, job: schemas.JobOpeningCreate):
+    db_job = db.query(models.JobOpening).filter(models.JobOpening.id == job_id).first()
+    if not db_job:
+        return None
+    
+    for key, value in job.dict().items():
+        setattr(db_job, key, value)
+    
+    db.commit()
+    db.refresh(db_job)
+    return db_job
+
+
+def delete_job_opening(db: Session, job_id: int):
+    db_job = db.query(models.JobOpening).filter(models.JobOpening.id == job_id).first()
+    if db_job:
+        db.delete(db_job)
+        db.commit()
+    return db_job
+
+
+# JobApplication CRUD
+def create_job_application(db: Session, application: schemas.JobApplicationCreate):
+    # Check if already applied
+    existing = db.query(models.JobApplication).filter(
+        models.JobApplication.job_id == application.job_id,
+        models.JobApplication.volunteer_id == application.volunteer_id
+    ).first()
+    
+    if existing:
+        return existing # Or raise error
+
+    db_application = models.JobApplication(**application.dict())
+    db.add(db_application)
+    db.commit()
+    db.refresh(db_application)
+    return db_application
+
+
+def get_job_applications(db: Session, job_id: int, skip: int = 0, limit: int = 100):
+    return db.query(models.JobApplication).filter(models.JobApplication.job_id == job_id)\
+        .options(joinedload(models.JobApplication.volunteer))\
+        .offset(skip).limit(limit).all()

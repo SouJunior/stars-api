@@ -103,24 +103,6 @@ def read_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return items
 
 
-# @app.get("/email")
-# def read_items():
-#     print("Email: ", )
-#     try:
-#         print("Email: ", os.getenv('BREVO_API_KEY'))
-#         return
-#         # api_response = api_instance.get_account()
-#         # pprint(api_response)
-#         api_response = api_instance.send_transac_email(send_smtp_email)
-#         pprint(api_response)
-
-
-#     except ApiException as e:
-#         print("Exception when calling AccountApi->get_account: %s\n" % e)
-
-#     return
-
-
 # volunteer
 @app.get("/volunteers/", response_model=list[schemas.VolunteerList], summary="Listar voluntários", description="Retorna uma lista de voluntários com opções de filtro por nome, email, cargo, status e squad.")
 def get_volunteers(
@@ -368,7 +350,7 @@ def get_squad(squad_id: int, db: Session = Depends(get_db)):
 @app.put("/squad/{squad_id}", response_model=schemas.Squad)
 def update_squad(
     squad_id: int,
-    squad: schemas.SquadCreate,
+    squad: schemas.SquadUpdate,
     db: Session = Depends(get_db),
     current_user: schemas.User = Depends(get_current_active_user)
 ):
@@ -546,3 +528,94 @@ def delete_feedback(
         raise HTTPException(status_code=403, detail="Not authorized to delete this feedback")
         
     return crud.delete_feedback(db, feedback_id=feedback_id)
+
+
+# Job Openings
+
+@app.post("/jobs/", response_model=schemas.JobOpening, summary="Criar vaga", description="Cria uma nova vaga de voluntariado. Requer autenticação.")
+def create_job(
+    job: schemas.JobOpeningCreate,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    return crud.create_job_opening(db=db, job=job, user_id=current_user.id)
+
+
+@app.get("/jobs/", response_model=list[schemas.JobOpening], summary="Listar vagas", description="Lista todas as vagas (pode filtrar por ativas).")
+def read_jobs(
+    skip: int = 0, 
+    limit: int = 100, 
+    active_only: bool = False,
+    db: Session = Depends(get_db)
+):
+    return crud.get_job_openings(db, skip=skip, limit=limit, active_only=active_only)
+
+
+@app.get("/jobs/{job_id}", response_model=schemas.JobOpening, summary="Obter vaga", description="Retorna detalhes de uma vaga.")
+def read_job(
+    job_id: int, 
+    db: Session = Depends(get_db)
+):
+    db_job = crud.get_job_opening(db, job_id=job_id)
+    if db_job is None:
+        raise HTTPException(status_code=404, detail="Job opening not found")
+    return db_job
+
+
+@app.put("/jobs/{job_id}", response_model=schemas.JobOpening, summary="Atualizar vaga", description="Atualiza uma vaga existente. Requer autenticação.")
+def update_job(
+    job_id: int, 
+    job: schemas.JobOpeningCreate, 
+    db: Session = Depends(get_db), 
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    db_job = crud.update_job_opening(db, job_id=job_id, job=job)
+    if db_job is None:
+        raise HTTPException(status_code=404, detail="Job opening not found")
+    return db_job
+
+
+@app.delete("/jobs/{job_id}", response_model=schemas.JobOpening, summary="Deletar vaga", description="Deleta uma vaga existente. Requer autenticação.")
+def delete_job(
+    job_id: int, 
+    db: Session = Depends(get_db), 
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    db_job = crud.delete_job_opening(db, job_id=job_id)
+    if db_job is None:
+        raise HTTPException(status_code=404, detail="Job opening not found")
+    return db_job
+
+
+# Job Applications
+
+@app.post("/jobs/apply", response_model=schemas.JobApplication, summary="Candidatar-se a uma vaga", description="Candidata-se a uma vaga usando email já cadastrado.")
+def apply_for_job(
+    job_id: int,
+    email: str,
+    db: Session = Depends(get_db)
+):
+    # 1. Check if volunteer exists
+    volunteer = crud.get_volunteer_by_email(db, email=email)
+    if not volunteer:
+        raise HTTPException(status_code=404, detail="Email não encontrado. Cadastre-se como voluntário primeiro.")
+    
+    # 2. Check if job exists and is active
+    job = crud.get_job_opening(db, job_id=job_id)
+    if not job or not job.is_active:
+         raise HTTPException(status_code=404, detail="Vaga não encontrada ou inativa.")
+
+    # 3. Apply
+    application_data = schemas.JobApplicationCreate(job_id=job_id, volunteer_id=volunteer.id)
+    return crud.create_job_application(db, application_data)
+
+
+@app.get("/jobs/{job_id}/applications", response_model=list[schemas.JobApplication], summary="Listar candidaturas", description="Lista candidaturas de uma vaga. Requer autenticação.")
+def read_job_applications(
+    job_id: int,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    return crud.get_job_applications(db, job_id=job_id, skip=skip, limit=limit)

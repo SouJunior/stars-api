@@ -58,6 +58,7 @@ class VolunteerInSquad(BaseModel):
 class SquadBase(BaseModel):
     name: str
     description: Optional[str] = None
+    discord_role_id: Optional[str] = None
 
 class SquadCreate(SquadBase):
     pass
@@ -66,9 +67,16 @@ class Squad(SquadBase):
     id: int
     volunteers: list[VolunteerInSquad] = []
     members_count: Optional[int] = 0
+    discord_role_id: Optional[str] = None
 
     class Config:
         orm_mode = True
+
+
+class SquadUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    discord_role_id: Optional[str] = None
 
 class VolunteerStatusBase(BaseModel):
     name: str
@@ -275,3 +283,136 @@ class Project(ProjectBase):
         orm_mode = True
 
 User.model_rebuild()
+
+
+class JobOpeningBase(BaseModel):
+
+
+    title: str
+
+
+    description: str
+
+
+    requirements: Optional[str] = None
+
+
+    is_active: Optional[bool] = True
+
+
+
+
+
+
+
+
+class JobOpeningCreate(JobOpeningBase):
+
+
+    pass
+
+
+
+
+
+
+
+
+class JobOpeningSummary(JobOpeningBase):
+
+
+    id: int
+
+
+    created_at: datetime
+
+
+    owner_id: Optional[int] = None
+
+
+
+
+
+    class Config:
+
+
+        orm_mode = True
+
+
+
+
+
+
+
+
+class JobApplicationBase(BaseModel):
+
+
+    job_id: int
+
+
+    volunteer_id: int
+
+
+
+
+
+
+
+
+class JobApplicationCreate(JobApplicationBase):
+
+
+    pass
+
+
+
+
+
+
+
+
+class JobApplication(JobApplicationBase):
+
+
+    id: int
+
+
+    created_at: datetime
+
+
+    job: JobOpeningSummary
+
+
+    volunteer: Volunteer
+
+
+
+
+
+    class Config:
+
+
+        orm_mode = True
+
+
+
+
+
+
+
+
+class JobOpening(JobOpeningSummary):
+
+
+    applications: list[JobApplication] = []
+
+
+
+
+
+    class Config:
+
+
+        orm_mode = True
+

@@ -59,6 +59,7 @@ class Squad(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(50), unique=True, index=True)
     description = Column(String(255), nullable=True)
+    discord_role_id = Column(String(255), nullable=True)
 
     volunteers = relationship("Volunteer", back_populates="squad")
     projects = relationship("Project", secondary=project_squad_association, back_populates="squads")
@@ -169,3 +170,30 @@ class Feedback(Base):
         if self.author and self.author.volunteer:
             return self.author.volunteer.linkedin
         return None
+
+
+class JobOpening(Base):
+    __tablename__ = "job_opening"
+
+    id = Column(Integer, primary_key=True)
+    title = Column(String(255), index=True, nullable=False)
+    description = Column(Text, nullable=False)
+    requirements = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    owner_id = Column(Integer, ForeignKey("users.id"))
+
+    owner = relationship("User")
+    applications = relationship("JobApplication", back_populates="job")
+
+
+class JobApplication(Base):
+    __tablename__ = "job_application"
+
+    id = Column(Integer, primary_key=True)
+    job_id = Column(Integer, ForeignKey("job_opening.id"))
+    volunteer_id = Column(Integer, ForeignKey("volunteer.id"))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    job = relationship("JobOpening", back_populates="applications")
+    volunteer = relationship("Volunteer")
