@@ -115,6 +115,7 @@ class VolunteerType(VolunteerTypeBase):
 class VolunteerCommon(BaseModel):
     name: str
     linkedin: str
+    github: Optional[str] = None
     is_active: Optional[bool]
 
 class VolunteerBase(VolunteerCommon):
@@ -260,6 +261,7 @@ class VolunteerUpdateLinkRequest(BaseModel):
 class VolunteerUpdateProfile(BaseModel):
     name: str
     linkedin: str
+    github: Optional[str] = None
     phone: Optional[str] = None
     discord: Optional[str] = None
     volunteer_type_id: Optional[int] = None
