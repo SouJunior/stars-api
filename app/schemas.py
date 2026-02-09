@@ -55,18 +55,29 @@ class VolunteerInSquad(BaseModel):
     class Config:
         orm_mode = True
 
+class ProjectInSquad(BaseModel):
+    id: int
+    name: str
+    description: Optional[str] = None
+    link: Optional[str] = None
+
+    class Config:
+        orm_mode = True
+
 class SquadBase(BaseModel):
     name: str
     description: Optional[str] = None
     discord_role_id: Optional[str] = None
 
 class SquadCreate(SquadBase):
-    pass
+    project_ids: Optional[list[int]] = []
 
 class Squad(SquadBase):
     id: int
     volunteers: list[VolunteerInSquad] = []
+    projects: list[ProjectInSquad] = []
     members_count: Optional[int] = 0
+    projects_count: Optional[int] = 0
     discord_role_id: Optional[str] = None
 
     class Config:
@@ -77,6 +88,7 @@ class SquadUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     discord_role_id: Optional[str] = None
+    project_ids: Optional[list[int]] = None
 
 class VolunteerStatusBase(BaseModel):
     name: str

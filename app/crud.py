@@ -137,27 +137,36 @@ def get_jobtitles(db: Session, skip: int = 0, limit: int = 100):
 def get_squads(db: Session, skip: int = 0, limit: int = 100):
     squads = db.query(models.Squad).options(
         joinedload(models.Squad.volunteers).joinedload(models.Volunteer.jobtitle),
-        joinedload(models.Squad.volunteers).joinedload(models.Volunteer.volunteer_type)
+        joinedload(models.Squad.volunteers).joinedload(models.Volunteer.volunteer_type),
+        joinedload(models.Squad.projects)
     ).offset(skip).limit(limit).all()
     
     for squad in squads:
         squad.members_count = len(squad.volunteers)
+        squad.projects_count = len(squad.projects)
         
     return squads
 
 def get_squad(db: Session, squad_id: int):
     squad = db.query(models.Squad).options(
         joinedload(models.Squad.volunteers).joinedload(models.Volunteer.jobtitle),
-        joinedload(models.Squad.volunteers).joinedload(models.Volunteer.volunteer_type)
+        joinedload(models.Squad.volunteers).joinedload(models.Volunteer.volunteer_type),
+        joinedload(models.Squad.projects)
     ).filter(models.Squad.id == squad_id).first()
     
     if squad:
         squad.members_count = len(squad.volunteers)
+        squad.projects_count = len(squad.projects)
         
     return squad
 
 def create_squad(db: Session, squad: schemas.SquadCreate):
     db_squad = models.Squad(name=squad.name, description=squad.description, discord_role_id=squad.discord_role_id)
+    
+    if squad.project_ids:
+        projects = db.query(models.Project).filter(models.Project.id.in_(squad.project_ids)).all()
+        db_squad.projects = projects
+
     db.add(db_squad)
     db.commit()
     db.refresh(db_squad)
@@ -168,9 +177,16 @@ def update_squad(db: Session, squad_id: int, squad: schemas.SquadUpdate):
     if not db_squad:
         return None
 
-    for var, value in vars(squad).items():
-        if value is not None:
-            setattr(db_squad, var, value)
+    update_data = squad.dict(exclude_unset=True)
+    
+    if 'project_ids' in update_data:
+        project_ids = update_data.pop('project_ids')
+        if project_ids is not None:
+            projects = db.query(models.Project).filter(models.Project.id.in_(project_ids)).all()
+            db_squad.projects = projects
+
+    for var, value in update_data.items():
+        setattr(db_squad, var, value)
 
     db.commit()
     db.refresh(db_squad)
