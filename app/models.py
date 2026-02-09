@@ -65,6 +65,23 @@ class Squad(Base):
     projects = relationship("Project", secondary=project_squad_association, back_populates="squads")
 
 
+volunteer_vertical_association = Table(
+    'volunteer_vertical', Base.metadata,
+    Column('volunteer_id', Integer, ForeignKey('volunteer.id'), primary_key=True),
+    Column('vertical_id', Integer, ForeignKey('vertical.id'), primary_key=True)
+)
+
+
+class Vertical(Base):
+    __tablename__ = "vertical"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(50), unique=True, index=True)
+    description = Column(String(255), nullable=True)
+
+    volunteers = relationship("Volunteer", secondary=volunteer_vertical_association, back_populates="verticals")
+
+
 class Project(Base):
     __tablename__ = "project"
 
@@ -121,6 +138,7 @@ class Volunteer(Base):
     squad = relationship("Squad", back_populates="volunteers")
     status_history = relationship("VolunteerStatusHistory", back_populates="volunteer")
     feedbacks = relationship("Feedback", back_populates="volunteer")
+    verticals = relationship("Vertical", secondary=volunteer_vertical_association, back_populates="volunteers")
 
     edit_token = Column(String(255), nullable=True, index=True)
     edit_token_expires_at = Column(DateTime, nullable=True)

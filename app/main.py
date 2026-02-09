@@ -302,6 +302,65 @@ def get_volunteer_types(skip: int = 0, limit: int = 100, db: Session = Depends(g
     return crud.get_volunteer_types(db, skip=skip, limit=limit)
 
 
+# Verticals
+@app.post("/verticals/", response_model=schemas.Vertical, summary="Criar Vertical", description="Cria uma nova vertical. Requer autenticação.")
+def create_vertical(
+    vertical: schemas.VerticalCreate,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    db_vertical = db.query(models.Vertical).filter(models.Vertical.name == vertical.name).first()
+    if db_vertical:
+        raise HTTPException(status_code=400, detail="Vertical with this name already exists")
+    return crud.create_vertical(db=db, vertical=vertical)
+
+@app.get("/verticals/", response_model=list[schemas.VerticalWithVolunteers], summary="Listar Verticais", description="Retorna uma lista de todas as verticais com os voluntários associados.")
+def get_verticals(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    return crud.get_verticals(db, skip=skip, limit=limit)
+
+@app.get("/verticals/{vertical_id}", response_model=schemas.VerticalWithVolunteers, summary="Obter Vertical por ID", description="Retorna os detalhes de uma vertical específica com os voluntários associados.")
+def get_vertical(vertical_id: int, db: Session = Depends(get_db)):
+    db_vertical = crud.get_vertical(db, vertical_id=vertical_id)
+    if db_vertical is None:
+        raise HTTPException(status_code=404, detail="Vertical not found")
+    return db_vertical
+
+@app.put("/verticals/{vertical_id}", response_model=schemas.Vertical, summary="Atualizar Vertical", description="Atualiza uma vertical existente. Requer autenticação.")
+def update_vertical(
+    vertical_id: int,
+    vertical: schemas.VerticalUpdate,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    updated_vertical = crud.update_vertical(db, vertical_id=vertical_id, vertical=vertical)
+    if updated_vertical is None:
+        raise HTTPException(status_code=404, detail="Vertical not found")
+    return updated_vertical
+
+@app.delete("/verticals/{vertical_id}", response_model=schemas.Vertical, summary="Deletar Vertical", description="Deleta uma vertical existente. Requer autenticação.")
+def delete_vertical(
+    vertical_id: int,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    db_vertical = crud.delete_vertical(db, vertical_id=vertical_id)
+    if db_vertical is None:
+        raise HTTPException(status_code=404, detail="Vertical not found")
+    return db_vertical
+
+@app.patch("/volunteers/{volunteer_id}/verticals/", response_model=schemas.Volunteer, summary="Atualizar verticais do voluntário", description="Atualiza as verticais associadas a um voluntário. Requer autenticação.")
+def update_volunteer_verticals(
+    volunteer_id: int,
+    vertical_ids: list[int],
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    updated_volunteer = crud.update_volunteer_verticals(db, volunteer_id, vertical_ids)
+    if updated_volunteer is None:
+        raise HTTPException(status_code=404, detail="Volunteer not found")
+    return updated_volunteer
+
+
 @app.post("/volunteer-types/", response_model=schemas.VolunteerType)
 def create_volunteer_type(
     type_data: schemas.VolunteerTypeBase,

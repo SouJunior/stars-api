@@ -124,6 +124,38 @@ class VolunteerType(VolunteerTypeBase):
     class Config:
         orm_mode = True
 
+class VerticalBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+class VerticalCreate(VerticalBase):
+    pass
+
+class VerticalUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+class VerticalInVolunteer(BaseModel):
+    id: int
+    name: str
+    description: Optional[str] = None
+
+    class Config:
+        orm_mode = True
+
+class Vertical(VerticalBase):
+    id: int
+
+    class Config:
+        orm_mode = True
+
+class VerticalWithVolunteers(VerticalBase):
+    id: int
+    volunteers: list['VolunteerInSquad'] = []
+
+    class Config:
+        orm_mode = True
+
 class VolunteerCommon(BaseModel):
     name: str
     linkedin: str
@@ -143,6 +175,7 @@ class VolunteerCreate(VolunteerBase):
     jobtitle_id: int
     volunteer_type_id: Optional[int] = None
     squad_id: Optional[int] = None
+    vertical_ids: Optional[list[int]] = None
 
 class FeedbackBase(BaseModel):
     content: str
@@ -180,6 +213,7 @@ class Volunteer(VolunteerBase):
     status: Optional[VolunteerStatus] = None
     volunteer_type: Optional[VolunteerType] = None
     squad: Optional['Squad'] = None
+    verticals: list[Vertical] = []
     status_history: list[VolunteerStatusHistory] = []
     feedbacks: list[FeedbackRead] = []
 
@@ -203,6 +237,7 @@ class VolunteerPublic(VolunteerCommon):
     status: Optional[VolunteerStatus] = None
     volunteer_type: Optional[VolunteerType] = None
     squad: Optional['Squad'] = None
+    verticals: list[Vertical] = []
     status_history: list[VolunteerStatusHistory] = []
     feedbacks: list[FeedbackRead] = []
 
@@ -277,6 +312,7 @@ class VolunteerUpdateProfile(BaseModel):
     phone: Optional[str] = None
     discord: Optional[str] = None
     volunteer_type_id: Optional[int] = None
+    vertical_ids: Optional[list[int]] = None
 
 
 class ProjectBase(BaseModel):

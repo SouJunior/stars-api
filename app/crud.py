@@ -52,6 +52,7 @@ def get_volunteers(db: Session, skip: int = 0, limit: int = 100, name: str = Non
         joinedload(models.Volunteer.status),
         joinedload(models.Volunteer.volunteer_type),
         joinedload(models.Volunteer.squad),
+        joinedload(models.Volunteer.verticals),
         joinedload(models.Volunteer.status_history).joinedload(models.VolunteerStatusHistory.status)
     )
     if name:
@@ -80,6 +81,7 @@ def get_volunteer_by_id(db: Session, volunteer_id: int):
         joinedload(models.Volunteer.status),
         joinedload(models.Volunteer.volunteer_type),
         joinedload(models.Volunteer.squad),
+        joinedload(models.Volunteer.verticals),
         joinedload(models.Volunteer.status_history).joinedload(models.VolunteerStatusHistory.status),
         joinedload(models.Volunteer.feedbacks).joinedload(models.Feedback.author).joinedload(models.User.volunteer)
     ).filter(models.Volunteer.id == volunteer_id).first()
@@ -91,6 +93,7 @@ def get_volunteer_by_email(db: Session, email: str):
             joinedload(models.Volunteer.status),
             joinedload(models.Volunteer.volunteer_type),
             joinedload(models.Volunteer.squad),
+            joinedload(models.Volunteer.verticals),
             joinedload(models.Volunteer.status_history).joinedload(models.VolunteerStatusHistory.status)
         )\
         .filter(models.Volunteer.email == email).first()
@@ -100,14 +103,17 @@ def create_volunteer(db: Session, volunteer: schemas.VolunteerCreate, jobtitle_i
     default_status = db.query(models.VolunteerStatus).filter(models.VolunteerStatus.name == "INTERESTED").first()
     if not default_status:
         raise ValueError("Default status 'INTERESTED' not found.")
-    
+
     # Get default volunteer type "Junior" if not provided
     if not volunteer.volunteer_type_id:
         default_type = db.query(models.VolunteerType).filter(models.VolunteerType.name == "Junior").first()
         if default_type:
             volunteer.volunteer_type_id = default_type.id
 
-    db_volunteer = models.Volunteer(**volunteer.dict(exclude_unset=True))
+    # Extract vertical_ids before creating the model
+    vertical_ids = volunteer.vertical_ids or []
+
+    db_volunteer = models.Volunteer(**volunteer.dict(exclude_unset=True, exclude={'vertical_ids'}))
     # Ensure jobtitle_id is set if it wasn't in the dict (though schema says it is required)
     if not db_volunteer.jobtitle_id:
          db_volunteer.jobtitle_id = jobtitle_id
@@ -118,6 +124,13 @@ def create_volunteer(db: Session, volunteer: schemas.VolunteerCreate, jobtitle_i
     db.add(db_volunteer)
     db.commit()
     db.refresh(db_volunteer)
+
+    # Add verticals if provided
+    if vertical_ids:
+        verticals = db.query(models.Vertical).filter(models.Vertical.id.in_(vertical_ids)).all()
+        db_volunteer.verticals = verticals
+        db.commit()
+        db.refresh(db_volunteer)
 
     # Add initial status to history
     status_history_entry = models.VolunteerStatusHistory(
@@ -272,6 +285,83 @@ def update_volunteer_squad(db: Session, volunteer_id: int, new_squad_id: int):
         db.refresh(db_volunteer)
     return db_volunteer
 
+
+# Vertical CRUD
+def get_verticals(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.Vertical).options(
+        joinedload(models.Vertical.volunteers).joinedload(models.Volunteer.jobtitle)
+    ).offset(skip).limit(limit).all()
+
+
+def get_vertical(db: Session, vertical_id: int):
+    return db.query(models.Vertical).options(
+        joinedload(models.Vertical.volunteers).joinedload(models.Volunteer.jobtitle)
+    ).filter(models.Vertical.id == vertical_id).first()
+
+
+def create_vertical(db: Session, vertical: schemas.VerticalCreate):
+    db_vertical = models.Vertical(name=vertical.name, description=vertical.description)
+    db.add(db_vertical)
+    db.commit()
+    db.refresh(db_vertical)
+    return db_vertical
+
+
+def update_vertical(db: Session, vertical_id: int, vertical: schemas.VerticalUpdate):
+    db_vertical = db.query(models.Vertical).filter(models.Vertical.id == vertical_id).first()
+    if not db_vertical:
+        return None
+    for key, value in vertical.dict(exclude_unset=True).items():
+        setattr(db_vertical, key, value)
+    db.commit()
+    db.refresh(db_vertical)
+    return db_vertical
+
+
+def delete_vertical(db: Session, vertical_id: int):
+    db_vertical = db.query(models.Vertical).filter(models.Vertical.id == vertical_id).first()
+    if db_vertical:
+        db.delete(db_vertical)
+        db.commit()
+    return db_vertical
+
+
+def add_volunteer_to_vertical(db: Session, volunteer_id: int, vertical_id: int):
+    db_volunteer = db.query(models.Volunteer).filter(models.Volunteer.id == volunteer_id).first()
+    db_vertical = db.query(models.Vertical).filter(models.Vertical.id == vertical_id).first()
+    if not db_volunteer or not db_vertical:
+        return None
+    if db_vertical not in db_volunteer.verticals:
+        db_volunteer.verticals.append(db_vertical)
+        db.commit()
+        db.refresh(db_volunteer)
+    return db_volunteer
+
+
+def remove_volunteer_from_vertical(db: Session, volunteer_id: int, vertical_id: int):
+    db_volunteer = db.query(models.Volunteer).filter(models.Volunteer.id == volunteer_id).first()
+    db_vertical = db.query(models.Vertical).filter(models.Vertical.id == vertical_id).first()
+    if not db_volunteer or not db_vertical:
+        return None
+    if db_vertical in db_volunteer.verticals:
+        db_volunteer.verticals.remove(db_vertical)
+        db.commit()
+        db.refresh(db_volunteer)
+    return db_volunteer
+
+
+def update_volunteer_verticals(db: Session, volunteer_id: int, vertical_ids: list[int]):
+    db_volunteer = db.query(models.Volunteer).filter(models.Volunteer.id == volunteer_id).first()
+    if not db_volunteer:
+        return None
+    
+    verticals = db.query(models.Vertical).filter(models.Vertical.id.in_(vertical_ids)).all()
+    db_volunteer.verticals = verticals
+    db.commit()
+    db.refresh(db_volunteer)
+    return db_volunteer
+
+
 def get_dashboard_stats(db: Session):
     # 1. Group by status
     status_counts = db.query(
@@ -388,14 +478,19 @@ def update_volunteer_profile_by_token(db: Session, token: str, profile_data: sch
         volunteer.linkedin = profile_data.linkedin
     if profile_data.volunteer_type_id:
         volunteer.volunteer_type_id = profile_data.volunteer_type_id
-    
+
     # Allow updating phone/discord/github to null/empty if passed, or new value
     volunteer.phone = profile_data.phone
     volunteer.discord = profile_data.discord
     volunteer.github = profile_data.github
-    
+
+    # Update verticals if provided
+    if profile_data.vertical_ids is not None:
+        verticals = db.query(models.Vertical).filter(models.Vertical.id.in_(profile_data.vertical_ids)).all()
+        volunteer.verticals = verticals
+
     volunteer.daily_edits_count += 1
-    
+
     db.commit()
     db.refresh(volunteer)
     return volunteer, None
