@@ -51,6 +51,7 @@ class VolunteerInSquad(BaseModel):
     name: str
     jobtitle: Optional['JobTitle'] = None
     volunteer_type: Optional['VolunteerType'] = None
+    status: Optional['VolunteerStatus'] = None
     
     class Config:
         orm_mode = True

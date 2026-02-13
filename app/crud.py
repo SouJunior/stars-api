@@ -151,6 +151,7 @@ def get_squads(db: Session, skip: int = 0, limit: int = 100):
     squads = db.query(models.Squad).options(
         joinedload(models.Squad.volunteers).joinedload(models.Volunteer.jobtitle),
         joinedload(models.Squad.volunteers).joinedload(models.Volunteer.volunteer_type),
+        joinedload(models.Squad.volunteers).joinedload(models.Volunteer.status),
         joinedload(models.Squad.projects)
     ).offset(skip).limit(limit).all()
     
@@ -164,6 +165,7 @@ def get_squad(db: Session, squad_id: int):
     squad = db.query(models.Squad).options(
         joinedload(models.Squad.volunteers).joinedload(models.Volunteer.jobtitle),
         joinedload(models.Squad.volunteers).joinedload(models.Volunteer.volunteer_type),
+        joinedload(models.Squad.volunteers).joinedload(models.Volunteer.status),
         joinedload(models.Squad.projects)
     ).filter(models.Squad.id == squad_id).first()
     
