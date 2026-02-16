@@ -449,7 +449,7 @@ def get_volunteer_statuses(skip: int = 0, limit: int = 100, db: Session = Depend
 
 
 @app.get("/dashboard/stats", response_model=schemas.DashboardStats, summary="Estatísticas do Dashboard", description="Retorna estatísticas para o dashboard, incluindo contagem de voluntários por status e cadastros realizados hoje.")
-def get_dashboard_stats(db: Session = Depends(get_db), current_user: schemas.User = Depends(get_current_active_user)):
+def get_dashboard_stats(db: Session = Depends(get_db)):
     return crud.get_dashboard_stats(db)
 
 
@@ -498,20 +498,18 @@ def create_project(
 ):
     return crud.create_project(db=db, project=project)
 
-@app.get("/projects/", response_model=list[schemas.Project], summary="Listar projetos", description="Retorna uma lista de todos os projetos. Requer autenticação.")
+@app.get("/projects/", response_model=list[schemas.Project], summary="Listar projetos", description="Retorna uma lista de todos os projetos.")
 def get_projects(
     skip: int = 0, 
     limit: int = 100, 
-    db: Session = Depends(get_db), 
-    current_user: schemas.User = Depends(get_current_active_user)
+    db: Session = Depends(get_db)
 ):
     return crud.get_projects(db, skip=skip, limit=limit)
 
-@app.get("/projects/{project_id}", response_model=schemas.Project, summary="Obter projeto por ID", description="Retorna os detalhes de um projeto específico. Requer autenticação.")
+@app.get("/projects/{project_id}", response_model=schemas.Project, summary="Obter projeto por ID", description="Retorna os detalhes de um projeto específico.")
 def get_project(
     project_id: int, 
-    db: Session = Depends(get_db), 
-    current_user: schemas.User = Depends(get_current_active_user)
+    db: Session = Depends(get_db)
 ):
     db_project = crud.get_project(db, project_id=project_id)
     if db_project is None:

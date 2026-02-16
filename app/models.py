@@ -109,6 +109,7 @@ class VolunteerType(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(50), unique=True, index=True)
     description = Column(String(255))
+    order = Column(Integer, default=999)
 
     volunteers = relationship("Volunteer", back_populates="volunteer_type")
 

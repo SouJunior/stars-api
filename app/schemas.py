@@ -118,6 +118,7 @@ class VolunteerStatusHistory(VolunteerStatusHistoryBase):
 class VolunteerTypeBase(BaseModel):
     name: str
     description: Optional[str] = None
+    order: Optional[int] = 999
 
 class VolunteerType(VolunteerTypeBase):
     id: int
