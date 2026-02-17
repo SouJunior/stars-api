@@ -676,3 +676,60 @@ def read_job_applications(
     current_user: schemas.User = Depends(get_current_active_user)
 ):
     return crud.get_job_applications(db, job_id=job_id, skip=skip, limit=limit)
+
+
+# Certificates
+@app.post("/volunteers/{volunteer_id}/certificates", response_model=schemas.Certificate, summary="Emitir certificado", description="Emite um novo certificado para um voluntário. Requer autenticação.")
+def create_certificate(
+    volunteer_id: int,
+    certificate: schemas.CertificateCreate,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    if volunteer_id != certificate.volunteer_id:
+        raise HTTPException(status_code=400, detail="Volunteer ID mismatch")
+    
+    db_volunteer = crud.get_volunteer_by_id(db, volunteer_id=volunteer_id)
+    if not db_volunteer:
+        raise HTTPException(status_code=404, detail="Volunteer not found")
+    
+    return crud.create_certificate(db=db, certificate=certificate, issuer_id=current_user.id)
+
+
+@app.get("/volunteers/{volunteer_id}/certificates", response_model=list[schemas.Certificate], summary="Listar certificados do voluntário", description="Retorna os certificados ativos de um voluntário.")
+def get_volunteer_certificates(
+    volunteer_id: int,
+    db: Session = Depends(get_db)
+):
+    db_volunteer = crud.get_volunteer_by_id(db, volunteer_id=volunteer_id)
+    if not db_volunteer:
+        raise HTTPException(status_code=404, detail="Volunteer not found")
+    
+    return crud.get_certificates_for_volunteer(db, volunteer_id=volunteer_id)
+
+
+@app.get("/certificates/{certificate_id}", response_model=schemas.Certificate, summary="Obter certificado", description="Retorna os detalhes de um certificado específico.")
+def get_certificate(
+    certificate_id: int,
+    db: Session = Depends(get_db)
+):
+    db_certificate = crud.get_certificate(db, certificate_id=certificate_id)
+    if not db_certificate:
+        raise HTTPException(status_code=404, detail="Certificate not found")
+    
+    # If cancelled, maybe only allow admins? 
+    # For now, let's keep it simple and show it even if cancelled, but frontend should handle it.
+    return db_certificate
+
+
+@app.patch("/certificates/{certificate_id}/cancel", response_model=schemas.Certificate, summary="Cancelar certificado", description="Cancela um certificado emitido. Requer autenticação.")
+def cancel_certificate(
+    certificate_id: int,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    db_certificate = crud.get_certificate(db, certificate_id=certificate_id)
+    if not db_certificate:
+        raise HTTPException(status_code=404, detail="Certificate not found")
+    
+    return crud.cancel_certificate(db, certificate_id=certificate_id)

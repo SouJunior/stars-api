@@ -202,6 +202,23 @@ class FeedbackRead(FeedbackBase):
     class Config:
         orm_mode = True
 
+class CertificateBase(BaseModel):
+    volunteer_id: int
+    hours: int
+    certificate_type: Optional[str] = "participation"
+
+class CertificateCreate(CertificateBase):
+    pass
+
+class Certificate(CertificateBase):
+    id: int
+    issued_at: datetime
+    is_cancelled: bool
+    issuer_id: int
+
+    class Config:
+        orm_mode = True
+
 class Volunteer(VolunteerBase):
     id: int
     is_apoiase_supporter: Optional[bool] = False
@@ -218,6 +235,7 @@ class Volunteer(VolunteerBase):
     verticals: list[Vertical] = []
     status_history: list[VolunteerStatusHistory] = []
     feedbacks: list[FeedbackRead] = []
+    certificates: list[Certificate] = []
 
     class Config:
         orm_mode = True
@@ -242,6 +260,7 @@ class VolunteerPublic(VolunteerCommon):
     verticals: list[Vertical] = []
     status_history: list[VolunteerStatusHistory] = []
     feedbacks: list[FeedbackRead] = []
+    certificates: list[Certificate] = []
 
     class Config:
         orm_mode = True

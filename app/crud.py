@@ -83,7 +83,8 @@ def get_volunteer_by_id(db: Session, volunteer_id: int):
         joinedload(models.Volunteer.squad),
         joinedload(models.Volunteer.verticals),
         joinedload(models.Volunteer.status_history).joinedload(models.VolunteerStatusHistory.status),
-        joinedload(models.Volunteer.feedbacks).joinedload(models.Feedback.author).joinedload(models.User.volunteer)
+        joinedload(models.Volunteer.feedbacks).joinedload(models.Feedback.author).joinedload(models.User.volunteer),
+        joinedload(models.Volunteer.certificates)
     ).filter(models.Volunteer.id == volunteer_id).first()
 
 def get_volunteer_by_email(db: Session, email: str):
@@ -631,3 +632,32 @@ def get_job_applications(db: Session, job_id: int, skip: int = 0, limit: int = 1
     return db.query(models.JobApplication).filter(models.JobApplication.job_id == job_id)\
         .options(joinedload(models.JobApplication.volunteer))\
         .offset(skip).limit(limit).all()
+
+
+# Certificate CRUD
+def create_certificate(db: Session, certificate: schemas.CertificateCreate, issuer_id: int):
+    db_certificate = models.Certificate(**certificate.dict(), issuer_id=issuer_id)
+    db.add(db_certificate)
+    db.commit()
+    db.refresh(db_certificate)
+    return db_certificate
+
+
+def get_certificates_for_volunteer(db: Session, volunteer_id: int, include_cancelled: bool = False):
+    query = db.query(models.Certificate).filter(models.Certificate.volunteer_id == volunteer_id)
+    if not include_cancelled:
+        query = query.filter(models.Certificate.is_cancelled == False)
+    return query.all()
+
+
+def get_certificate(db: Session, certificate_id: int):
+    return db.query(models.Certificate).filter(models.Certificate.id == certificate_id).first()
+
+
+def cancel_certificate(db: Session, certificate_id: int):
+    db_certificate = db.query(models.Certificate).filter(models.Certificate.id == certificate_id).first()
+    if db_certificate:
+        db_certificate.is_cancelled = True
+        db.commit()
+        db.refresh(db_certificate)
+    return db_certificate

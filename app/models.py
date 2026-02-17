@@ -15,6 +15,7 @@ class User(Base):
 
     items = relationship("Item", back_populates="owner")
     feedbacks = relationship("Feedback", back_populates="author")
+    certificates_issued = relationship("Certificate", back_populates="issuer")
     volunteer = relationship(
         "Volunteer",
         primaryjoin="foreign(User.email) == remote(Volunteer.email)",
@@ -140,6 +141,7 @@ class Volunteer(Base):
     status_history = relationship("VolunteerStatusHistory", back_populates="volunteer")
     feedbacks = relationship("Feedback", back_populates="volunteer")
     verticals = relationship("Vertical", secondary=volunteer_vertical_association, back_populates="volunteers")
+    certificates = relationship("Certificate", back_populates="volunteer")
 
     edit_token = Column(String(255), nullable=True, index=True)
     edit_token_expires_at = Column(DateTime, nullable=True)
@@ -217,3 +219,18 @@ class JobApplication(Base):
 
     job = relationship("JobOpening", back_populates="applications")
     volunteer = relationship("Volunteer")
+
+
+class Certificate(Base):
+    __tablename__ = "certificates"
+
+    id = Column(Integer, primary_key=True)
+    volunteer_id = Column(Integer, ForeignKey("volunteer.id"), nullable=False)
+    hours = Column(Integer, nullable=False)
+    issued_at = Column(DateTime(timezone=True), server_default=func.now())
+    is_cancelled = Column(Boolean, default=False)
+    certificate_type = Column(String(50), default="participation")
+    issuer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+
+    volunteer = relationship("Volunteer", back_populates="certificates")
+    issuer = relationship("User", back_populates="certificates_issued")
