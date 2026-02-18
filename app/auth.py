@@ -66,8 +66,25 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     return user
 
 from app import schemas
+from app.models import UserRole
 
 def get_current_active_user(current_user: schemas.User = Depends(get_current_user)):
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
+
+class RoleChecker:
+    def __init__(self, allowed_roles: list[UserRole]):
+        self.allowed_roles = allowed_roles
+
+    def __call__(self, user: schemas.User = Depends(get_current_active_user)):
+        if user.role not in self.allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="The user doesn't have enough privileges",
+            )
+        return user
+
+admin_only = RoleChecker([UserRole.ADMIN])
+head_or_admin = RoleChecker([UserRole.ADMIN, UserRole.HEAD])
+mentor_or_above = RoleChecker([UserRole.ADMIN, UserRole.HEAD, UserRole.MENTOR])

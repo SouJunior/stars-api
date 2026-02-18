@@ -13,7 +13,7 @@ from app import crud, models, schemas
 from app.database import SessionLocal, engine
 
 from app.settings import settings
-from app.auth import oauth2_scheme, authenticate_user, create_access_token, get_current_user, get_current_active_user
+from app.auth import oauth2_scheme, authenticate_user, create_access_token, get_current_user, get_current_active_user, admin_only, head_or_admin, mentor_or_above
 from typing import Annotated, Optional
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi import Depends, FastAPI
@@ -58,7 +58,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     access_token = create_access_token(
         data={"sub": user.email}
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {"access_token": access_token, "token_type": "bearer", "role": user.role}
 
 
 @app.get("/users/me/", response_model=schemas.User, summary="Obter usuário autenticado", description="Retorna os detalhes do usuário atualmente autenticado.")
@@ -77,7 +77,7 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
 
 
 @app.get("/users/", response_model=list[schemas.User], summary="Listar usuários", description="Retorna uma lista de todos os usuários. Requer autenticação.")
-def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: schemas.User = Depends(get_current_active_user)):
+def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: schemas.User = Depends(admin_only)):
     users = utils.get_users(db, skip=skip, limit=limit)
     return users
 
@@ -87,6 +87,23 @@ def read_user(user_id: int, db: Session = Depends(get_db), current_user: schemas
     db_user = utils.get_user(db, user_id=user_id)
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
+    return db_user
+
+
+@app.patch("/users/{user_id}/role", response_model=schemas.User, summary="Atualizar papel do usuário", description="Atualiza o papel (role) de um usuário. Apenas administradores podem executar esta ação.")
+def update_user_role(
+    user_id: int, 
+    role: schemas.UserRole, 
+    db: Session = Depends(get_db), 
+    current_user: schemas.User = Depends(admin_only)
+):
+    db_user = utils.get_user(db, user_id=user_id)
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    db_user.role = role
+    db.commit()
+    db.refresh(db_user)
     return db_user
 
 
@@ -115,7 +132,8 @@ def get_volunteers(
     volunteer_type_id: Optional[int] = None,
     squad_id: Optional[int] = None,
     order: str = Query("desc", enum=["asc", "desc"], description="Ordenação por data de criação"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(mentor_or_above)
 ):
     db_volunteers = crud.get_volunteers(db, skip=skip, limit=limit, name=name, email=email, jobtitle_id=jobtitle_id, status_id=status_id, volunteer_type_id=volunteer_type_id, squad_id=squad_id, order=order)
     if db_volunteers is None:
@@ -159,7 +177,9 @@ def create_volunteer(volunteer: schemas.VolunteerCreate, db: Session = Depends(g
 
 @app.get("/volunteers/{volunteer_id}", response_model=schemas.Volunteer)
 def get_volunteer_by_id(
-    volunteer_id: int, db: Session = Depends(get_db)
+    volunteer_id: int, 
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(mentor_or_above)
 ):
     db_volunteer = crud.get_volunteer_by_id(db, volunteer_id=volunteer_id)
     if db_volunteer is None:
@@ -231,7 +251,7 @@ def update_volunteer_status(
     volunteer_id: int,
     new_status_id: int,
     db: Session = Depends(get_db),
-    current_user: schemas.User = Depends(get_current_active_user) # Assuming status updates are restricted to authenticated users
+    current_user: schemas.User = Depends(head_or_admin)
 ):
     # Check if the new_status_id is valid
     db_status = db.query(models.VolunteerStatus).filter(models.VolunteerStatus.id == new_status_id).first()
@@ -249,7 +269,7 @@ def update_volunteer_squad(
     volunteer_id: int,
     new_squad_id: int,
     db: Session = Depends(get_db),
-    current_user: schemas.User = Depends(get_current_active_user)
+    current_user: schemas.User = Depends(head_or_admin)
 ):
     db_squad = db.query(models.Squad).filter(models.Squad.id == new_squad_id).first()
     if not db_squad:
@@ -266,7 +286,7 @@ def update_volunteer_type(
     volunteer_id: int,
     new_type_id: int,
     db: Session = Depends(get_db),
-    current_user: schemas.User = Depends(get_current_active_user)
+    current_user: schemas.User = Depends(head_or_admin)
 ):
     db_type = db.query(models.VolunteerType).filter(models.VolunteerType.id == new_type_id).first()
     if not db_type:
@@ -282,7 +302,7 @@ def update_volunteer_type(
 async def check_volunteer_apoiase(
     volunteer_id: int,
     db: Session = Depends(get_db),
-    current_user: schemas.User = Depends(get_current_active_user)
+    current_user: schemas.User = Depends(head_or_admin)
 ):
     volunteer = crud.get_volunteer_by_id(db, volunteer_id=volunteer_id)
     if not volunteer:
@@ -307,7 +327,7 @@ def get_volunteer_types(skip: int = 0, limit: int = 100, db: Session = Depends(g
 def create_vertical(
     vertical: schemas.VerticalCreate,
     db: Session = Depends(get_db),
-    current_user: schemas.User = Depends(get_current_active_user)
+    current_user: schemas.User = Depends(head_or_admin)
 ):
     db_vertical = db.query(models.Vertical).filter(models.Vertical.name == vertical.name).first()
     if db_vertical:
@@ -330,7 +350,7 @@ def update_vertical(
     vertical_id: int,
     vertical: schemas.VerticalUpdate,
     db: Session = Depends(get_db),
-    current_user: schemas.User = Depends(get_current_active_user)
+    current_user: schemas.User = Depends(head_or_admin)
 ):
     updated_vertical = crud.update_vertical(db, vertical_id=vertical_id, vertical=vertical)
     if updated_vertical is None:
@@ -341,7 +361,7 @@ def update_vertical(
 def delete_vertical(
     vertical_id: int,
     db: Session = Depends(get_db),
-    current_user: schemas.User = Depends(get_current_active_user)
+    current_user: schemas.User = Depends(admin_only)
 ):
     db_vertical = crud.delete_vertical(db, vertical_id=vertical_id)
     if db_vertical is None:
@@ -385,7 +405,7 @@ def get_jobtitles(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
 def create_squad(
     squad: schemas.SquadCreate,
     db: Session = Depends(get_db),
-    current_user: schemas.User = Depends(get_current_active_user)
+    current_user: schemas.User = Depends(head_or_admin)
 ):
     db_squad = db.query(models.Squad).filter(models.Squad.name == squad.name).first()
     if db_squad:
@@ -411,7 +431,7 @@ def update_squad(
     squad_id: int,
     squad: schemas.SquadUpdate,
     db: Session = Depends(get_db),
-    current_user: schemas.User = Depends(get_current_active_user)
+    current_user: schemas.User = Depends(head_or_admin)
 ):
     updated_squad = crud.update_squad(db, squad_id=squad_id, squad=squad)
     if updated_squad is None:
@@ -423,7 +443,7 @@ def update_squad(
 def delete_squad(
     squad_id: int,
     db: Session = Depends(get_db),
-    current_user: schemas.User = Depends(get_current_active_user)
+    current_user: schemas.User = Depends(admin_only)
 ):
     db_squad = crud.delete_squad(db, squad_id=squad_id)
     if db_squad is None:
@@ -449,7 +469,10 @@ def get_volunteer_statuses(skip: int = 0, limit: int = 100, db: Session = Depend
 
 
 @app.get("/dashboard/stats", response_model=schemas.DashboardStats, summary="Estatísticas do Dashboard", description="Retorna estatísticas para o dashboard, incluindo contagem de voluntários por status e cadastros realizados hoje.")
-def get_dashboard_stats(db: Session = Depends(get_db)):
+def get_dashboard_stats(
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(mentor_or_above)
+):
     return crud.get_dashboard_stats(db)
 
 
@@ -494,7 +517,7 @@ def send_email(email, name):
 def create_project(
     project: schemas.ProjectCreate,
     db: Session = Depends(get_db),
-    current_user: schemas.User = Depends(get_current_active_user)
+    current_user: schemas.User = Depends(head_or_admin)
 ):
     return crud.create_project(db=db, project=project)
 
@@ -520,7 +543,7 @@ def get_project(
 def delete_project(
     project_id: int, 
     db: Session = Depends(get_db), 
-    current_user: schemas.User = Depends(get_current_active_user)
+    current_user: schemas.User = Depends(admin_only)
 ):
     db_project = crud.delete_project(db, project_id=project_id)
     if db_project is None:
@@ -534,7 +557,7 @@ def create_feedback(
     volunteer_id: int, 
     feedback: schemas.FeedbackCreate, 
     db: Session = Depends(get_db), 
-    current_user: schemas.User = Depends(get_current_active_user)
+    current_user: schemas.User = Depends(mentor_or_above)
 ):
     # Check if volunteer exists
     db_volunteer = crud.get_volunteer_by_id(db, volunteer_id=volunteer_id)
@@ -560,13 +583,13 @@ def update_feedback(
     feedback_id: int, 
     feedback: schemas.FeedbackUpdate, 
     db: Session = Depends(get_db), 
-    current_user: schemas.User = Depends(get_current_active_user)
+    current_user: schemas.User = Depends(mentor_or_above)
 ):
     db_feedback = crud.get_feedback(db, feedback_id=feedback_id)
     if not db_feedback:
         raise HTTPException(status_code=404, detail="Feedback not found")
         
-    if db_feedback.user_id != current_user.id:
+    if db_feedback.user_id != current_user.id and current_user.role != models.UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Not authorized to update this feedback")
         
     return crud.update_feedback(db, feedback_id=feedback_id, feedback=feedback)
@@ -575,13 +598,13 @@ def update_feedback(
 def delete_feedback(
     feedback_id: int, 
     db: Session = Depends(get_db), 
-    current_user: schemas.User = Depends(get_current_active_user)
+    current_user: schemas.User = Depends(mentor_or_above)
 ):
     db_feedback = crud.get_feedback(db, feedback_id=feedback_id)
     if not db_feedback:
         raise HTTPException(status_code=404, detail="Feedback not found")
         
-    if db_feedback.user_id != current_user.id:
+    if db_feedback.user_id != current_user.id and current_user.role != models.UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Not authorized to delete this feedback")
         
     return crud.delete_feedback(db, feedback_id=feedback_id)
@@ -593,7 +616,7 @@ def delete_feedback(
 def create_job(
     job: schemas.JobOpeningCreate,
     db: Session = Depends(get_db),
-    current_user: schemas.User = Depends(get_current_active_user)
+    current_user: schemas.User = Depends(head_or_admin)
 ):
     return crud.create_job_opening(db=db, job=job, user_id=current_user.id)
 
@@ -624,7 +647,7 @@ def update_job(
     job_id: int, 
     job: schemas.JobOpeningCreate, 
     db: Session = Depends(get_db), 
-    current_user: schemas.User = Depends(get_current_active_user)
+    current_user: schemas.User = Depends(head_or_admin)
 ):
     db_job = crud.update_job_opening(db, job_id=job_id, job=job)
     if db_job is None:
@@ -636,7 +659,7 @@ def update_job(
 def delete_job(
     job_id: int, 
     db: Session = Depends(get_db), 
-    current_user: schemas.User = Depends(get_current_active_user)
+    current_user: schemas.User = Depends(admin_only)
 ):
     db_job = crud.delete_job_opening(db, job_id=job_id)
     if db_job is None:
@@ -673,7 +696,7 @@ def read_job_applications(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: schemas.User = Depends(get_current_active_user)
+    current_user: schemas.User = Depends(mentor_or_above)
 ):
     return crud.get_job_applications(db, job_id=job_id, skip=skip, limit=limit)
 
@@ -684,7 +707,7 @@ def create_certificate(
     volunteer_id: int,
     certificate: schemas.CertificateCreate,
     db: Session = Depends(get_db),
-    current_user: schemas.User = Depends(get_current_active_user)
+    current_user: schemas.User = Depends(head_or_admin)
 ):
     if volunteer_id != certificate.volunteer_id:
         raise HTTPException(status_code=400, detail="Volunteer ID mismatch")
@@ -726,7 +749,7 @@ def get_certificate(
 def cancel_certificate(
     certificate_id: int,
     db: Session = Depends(get_db),
-    current_user: schemas.User = Depends(get_current_active_user)
+    current_user: schemas.User = Depends(head_or_admin)
 ):
     db_certificate = crud.get_certificate(db, certificate_id=certificate_id)
     if not db_certificate:

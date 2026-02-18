@@ -1,6 +1,13 @@
 from pydantic import BaseModel
 from typing import Optional, Union
 from datetime import datetime
+import enum
+
+
+class UserRole(str, enum.Enum):
+    ADMIN = "ADMIN"
+    HEAD = "HEAD"
+    MENTOR = "MENTOR"
 
 
 class ItemBase(BaseModel):
@@ -32,6 +39,7 @@ class UserCreate(UserBase):
 class User(UserBase):
     id: int
     is_active: bool
+    role: UserRole = UserRole.MENTOR
     items: list[Item] = []
     volunteer: Optional['Volunteer'] = None
 
@@ -285,6 +293,7 @@ class VolunteerList(VolunteerBase):
 class Token(BaseModel):
     access_token: str
     token_type: str
+    role: Optional[UserRole] = None
 
 class TokenData(BaseModel):
     username: Union[str, None] = None
@@ -293,6 +302,7 @@ class TokenData(BaseModel):
 class UserAuth(BaseModel):
     username: str
     email: str
+    role: UserRole
     is_active: Union[bool, None] = None
 
 class UserInDB(UserAuth):

@@ -1,9 +1,15 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, DateTime, Date, Table
+import enum
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, DateTime, Date, Table, Enum
 from sqlalchemy.orm import relationship, foreign, remote
 from sqlalchemy.sql import func
 from sqlalchemy.ext.hybrid import hybrid_property
 
 from .database import Base
+
+class UserRole(str, enum.Enum):
+    ADMIN = "ADMIN"
+    HEAD = "HEAD"
+    MENTOR = "MENTOR"
 
 class User(Base):
     __tablename__ = "users"
@@ -12,6 +18,7 @@ class User(Base):
     email = Column(String(320), unique=True, index=True)
     hashed_password = Column(String(255))
     is_active = Column(Boolean, default=True)
+    role = Column(Enum(UserRole), default=UserRole.MENTOR, nullable=False)
 
     items = relationship("Item", back_populates="owner")
     feedbacks = relationship("Feedback", back_populates="author")
