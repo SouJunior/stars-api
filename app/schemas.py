@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, Union
 from datetime import datetime
 import enum
@@ -74,9 +74,9 @@ class ProjectInSquad(BaseModel):
         orm_mode = True
 
 class SquadBase(BaseModel):
-    name: str
-    description: Optional[str] = None
-    discord_role_id: Optional[str] = None
+    name: str = Field(..., max_length=50)
+    description: Optional[str] = Field(None, max_length=255)
+    discord_role_id: Optional[str] = Field(None, max_length=255)
 
 class SquadCreate(SquadBase):
     project_ids: Optional[list[int]] = []
@@ -87,21 +87,21 @@ class Squad(SquadBase):
     projects: list[ProjectInSquad] = []
     members_count: Optional[int] = 0
     projects_count: Optional[int] = 0
-    discord_role_id: Optional[str] = None
+    discord_role_id: Optional[str] = Field(None, max_length=255)
 
     class Config:
         orm_mode = True
 
 
 class SquadUpdate(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
-    discord_role_id: Optional[str] = None
+    name: Optional[str] = Field(None, max_length=50)
+    description: Optional[str] = Field(None, max_length=255)
+    discord_role_id: Optional[str] = Field(None, max_length=255)
     project_ids: Optional[list[int]] = None
 
 class VolunteerStatusBase(BaseModel):
-    name: str
-    description: Optional[str] = None
+    name: str = Field(..., max_length=50)
+    description: Optional[str] = Field(None, max_length=255)
 
 class VolunteerStatusCreate(VolunteerStatusBase):
     pass
@@ -124,8 +124,8 @@ class VolunteerStatusHistory(VolunteerStatusHistoryBase):
         orm_mode = True
 
 class VolunteerTypeBase(BaseModel):
-    name: str
-    description: Optional[str] = None
+    name: str = Field(..., max_length=50)
+    description: Optional[str] = Field(None, max_length=255)
     order: Optional[int] = 999
 
 class VolunteerType(VolunteerTypeBase):
@@ -135,20 +135,20 @@ class VolunteerType(VolunteerTypeBase):
         orm_mode = True
 
 class VerticalBase(BaseModel):
-    name: str
-    description: Optional[str] = None
+    name: str = Field(..., max_length=50)
+    description: Optional[str] = Field(None, max_length=255)
 
 class VerticalCreate(VerticalBase):
     pass
 
 class VerticalUpdate(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
+    name: Optional[str] = Field(None, max_length=50)
+    description: Optional[str] = Field(None, max_length=255)
 
 class VerticalInVolunteer(BaseModel):
     id: int
-    name: str
-    description: Optional[str] = None
+    name: str = Field(..., max_length=50)
+    description: Optional[str] = Field(None, max_length=255)
 
     class Config:
         orm_mode = True
@@ -167,15 +167,15 @@ class VerticalWithVolunteers(VerticalBase):
         orm_mode = True
 
 class VolunteerCommon(BaseModel):
-    name: str
-    linkedin: str
-    github: Optional[str] = None
+    name: str = Field(..., max_length=255)
+    linkedin: str = Field(..., max_length=255)
+    github: Optional[str] = Field(None, max_length=255)
     is_active: Optional[bool]
 
 class VolunteerBase(VolunteerCommon):
-    phone: Optional[str] = None
-    discord: Optional[str] = None
-    email: str
+    phone: Optional[str] = Field(None, max_length=30)
+    discord: Optional[str] = Field(None, max_length=255)
+    email: str = Field(..., max_length=255)
 
 class VolunteerCreate(VolunteerBase):
     # name: str
@@ -228,7 +228,7 @@ class Certificate(CertificateBase):
         orm_mode = True
 
 class BadgeBase(BaseModel):
-    title: str
+    title: str = Field(..., max_length=255)
     description: Optional[str] = None
 
 class BadgeCreate(BadgeBase):
@@ -357,19 +357,19 @@ class VolunteerUpdateLinkRequest(BaseModel):
 
 
 class VolunteerUpdateProfile(BaseModel):
-    name: str
-    linkedin: str
-    github: Optional[str] = None
-    phone: Optional[str] = None
-    discord: Optional[str] = None
+    name: str = Field(..., max_length=255)
+    linkedin: str = Field(..., max_length=255)
+    github: Optional[str] = Field(None, max_length=255)
+    phone: Optional[str] = Field(None, max_length=30)
+    discord: Optional[str] = Field(None, max_length=255)
     volunteer_type_id: Optional[int] = None
     vertical_ids: Optional[list[int]] = None
 
 
 class ProjectBase(BaseModel):
-    name: str
+    name: str = Field(..., max_length=100)
     description: Optional[str] = None
-    link: Optional[str] = None
+    link: Optional[str] = Field(None, max_length=255)
 
 
 class ProjectCreate(ProjectBase):
@@ -389,7 +389,7 @@ User.model_rebuild()
 class JobOpeningBase(BaseModel):
 
 
-    title: str
+    title: str = Field(..., max_length=255)
 
 
     description: str
