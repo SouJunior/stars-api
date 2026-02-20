@@ -470,8 +470,7 @@ def get_volunteer_statuses(skip: int = 0, limit: int = 100, db: Session = Depend
 
 @app.get("/dashboard/stats", response_model=schemas.DashboardStats, summary="Estatísticas do Dashboard", description="Retorna estatísticas para o dashboard, incluindo contagem de voluntários por status e cadastros realizados hoje.")
 def get_dashboard_stats(
-    db: Session = Depends(get_db),
-    current_user: schemas.User = Depends(mentor_or_above)
+    db: Session = Depends(get_db)
 ):
     return crud.get_dashboard_stats(db)
 
