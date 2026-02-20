@@ -23,6 +23,7 @@ class User(Base):
     items = relationship("Item", back_populates="owner")
     feedbacks = relationship("Feedback", back_populates="author")
     certificates_issued = relationship("Certificate", back_populates="issuer")
+    badges_issued = relationship("Badge", back_populates="issuer")
     volunteer = relationship(
         "Volunteer",
         primaryjoin="foreign(User.email) == remote(Volunteer.email)",
@@ -147,6 +148,7 @@ class Volunteer(Base):
     squad = relationship("Squad", back_populates="volunteers")
     status_history = relationship("VolunteerStatusHistory", back_populates="volunteer")
     feedbacks = relationship("Feedback", back_populates="volunteer")
+    badges = relationship("Badge", back_populates="volunteer")
     verticals = relationship("Vertical", secondary=volunteer_vertical_association, back_populates="volunteers")
     certificates = relationship("Certificate", back_populates="volunteer")
 
@@ -241,3 +243,23 @@ class Certificate(Base):
 
     volunteer = relationship("Volunteer", back_populates="certificates")
     issuer = relationship("User", back_populates="certificates_issued")
+
+
+class Badge(Base):
+    __tablename__ = "badges"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    volunteer_id = Column(Integer, ForeignKey("volunteer.id"), nullable=False)
+    issuer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+
+    volunteer = relationship("Volunteer", back_populates="badges")
+    issuer = relationship("User", back_populates="badges_issued")
+
+    @property
+    def issuer_name(self):
+        if self.issuer and self.issuer.volunteer:
+            return self.issuer.volunteer.name
+        return "***"

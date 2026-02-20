@@ -755,3 +755,51 @@ def cancel_certificate(
         raise HTTPException(status_code=404, detail="Certificate not found")
     
     return crud.cancel_certificate(db, certificate_id=certificate_id)
+
+
+# Badges
+@app.post("/volunteers/{volunteer_id}/badges", response_model=schemas.BadgeRead, summary="Atribuir medalha", description="Atribui uma nova medalha a um voluntário. Requer autenticação.")
+def create_badge(
+    volunteer_id: int,
+    badge: schemas.BadgeCreate,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(mentor_or_above)
+):
+    if volunteer_id != badge.volunteer_id:
+        raise HTTPException(status_code=400, detail="Volunteer ID mismatch")
+
+    db_volunteer = crud.get_volunteer_by_id(db, volunteer_id=volunteer_id)
+    if not db_volunteer:
+        raise HTTPException(status_code=404, detail="Volunteer not found")
+
+    return crud.create_badge(db=db, badge=badge, issuer_id=current_user.id)
+
+
+@app.get("/volunteers/{volunteer_id}/badges", response_model=list[schemas.BadgeRead], summary="Listar medalhas do voluntário", description="Retorna as medalhas de um voluntário. Requer autenticação.")
+def get_volunteer_badges(
+    volunteer_id: int,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    db_volunteer = crud.get_volunteer_by_id(db, volunteer_id=volunteer_id)
+    if not db_volunteer:
+        raise HTTPException(status_code=404, detail="Volunteer not found")
+
+    return crud.get_badges_for_volunteer(db, volunteer_id=volunteer_id)
+
+
+@app.delete("/badges/{badge_id}", response_model=schemas.BadgeRead, summary="Deletar medalha", description="Deleta uma medalha existente. Apenas o autor ou admin pode deletar.")
+def delete_badge(
+    badge_id: int,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(mentor_or_above)
+):
+    db_badge = db.query(models.Badge).filter(models.Badge.id == badge_id).first()
+    if not db_badge:
+        raise HTTPException(status_code=404, detail="Badge not found")
+
+    if db_badge.issuer_id != current_user.id and current_user.role != models.UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this badge")
+
+    return crud.delete_badge(db, badge_id=badge_id)
+    

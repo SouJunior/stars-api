@@ -227,6 +227,24 @@ class Certificate(CertificateBase):
     class Config:
         orm_mode = True
 
+class BadgeBase(BaseModel):
+    title: str
+    description: Optional[str] = None
+
+class BadgeCreate(BadgeBase):
+    volunteer_id: int
+
+class BadgeRead(BadgeBase):
+    id: int
+    volunteer_id: int
+    issuer_id: int
+    created_at: datetime
+    issuer: Optional[UserBase] = None
+    issuer_name: str
+
+    class Config:
+        orm_mode = True
+
 class Volunteer(VolunteerBase):
     id: int
     is_apoiase_supporter: Optional[bool] = False
@@ -244,6 +262,7 @@ class Volunteer(VolunteerBase):
     status_history: list[VolunteerStatusHistory] = []
     feedbacks: list[FeedbackRead] = []
     certificates: list[Certificate] = []
+    badges: list[BadgeRead] = []
 
     class Config:
         orm_mode = True
@@ -269,6 +288,7 @@ class VolunteerPublic(VolunteerCommon):
     status_history: list[VolunteerStatusHistory] = []
     feedbacks: list[FeedbackRead] = []
     certificates: list[Certificate] = []
+    badges: list[BadgeRead] = []
 
     class Config:
         orm_mode = True

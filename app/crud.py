@@ -84,7 +84,8 @@ def get_volunteer_by_id(db: Session, volunteer_id: int):
         joinedload(models.Volunteer.verticals),
         joinedload(models.Volunteer.status_history).joinedload(models.VolunteerStatusHistory.status),
         joinedload(models.Volunteer.feedbacks).joinedload(models.Feedback.author).joinedload(models.User.volunteer),
-        joinedload(models.Volunteer.certificates)
+        joinedload(models.Volunteer.certificates),
+        joinedload(models.Volunteer.badges).joinedload(models.Badge.issuer).joinedload(models.User.volunteer)
     ).filter(models.Volunteer.id == volunteer_id).first()
 
 def get_volunteer_by_email(db: Session, email: str):
@@ -661,3 +662,27 @@ def cancel_certificate(db: Session, certificate_id: int):
         db.commit()
         db.refresh(db_certificate)
     return db_certificate
+
+
+# Badge CRUD
+def create_badge(db: Session, badge: schemas.BadgeCreate, issuer_id: int):
+    db_badge = models.Badge(**badge.dict(), issuer_id=issuer_id)
+    db.add(db_badge)
+    db.commit()
+    db.refresh(db_badge)
+    return db_badge
+
+
+def get_badges_for_volunteer(db: Session, volunteer_id: int):
+    return db.query(models.Badge).options(
+        joinedload(models.Badge.issuer).joinedload(models.User.volunteer)
+    ).filter(models.Badge.volunteer_id == volunteer_id)\
+        .order_by(models.Badge.created_at.desc()).all()
+
+
+def delete_badge(db: Session, badge_id: int):
+    db_badge = db.query(models.Badge).filter(models.Badge.id == badge_id).first()
+    if db_badge:
+        db.delete(db_badge)
+        db.commit()
+    return db_badge
