@@ -85,7 +85,9 @@ def get_volunteer_by_id(db: Session, volunteer_id: int):
         joinedload(models.Volunteer.status_history).joinedload(models.VolunteerStatusHistory.status),
         joinedload(models.Volunteer.feedbacks).joinedload(models.Feedback.author).joinedload(models.User.volunteer),
         joinedload(models.Volunteer.certificates),
-        joinedload(models.Volunteer.badges).joinedload(models.Badge.issuer).joinedload(models.User.volunteer)
+        joinedload(models.Volunteer.badges).joinedload(models.Badge.issuer).joinedload(models.User.volunteer),
+        joinedload(models.Volunteer.mentees),
+        joinedload(models.Volunteer.mentors)
     ).filter(models.Volunteer.id == volunteer_id).first()
 
 def get_volunteer_by_email(db: Session, email: str):
@@ -686,3 +688,27 @@ def delete_badge(db: Session, badge_id: int):
         db.delete(db_badge)
         db.commit()
     return db_badge
+
+
+def add_mentee_to_mentor(db: Session, mentor_id: int, mentee_id: int):
+    mentor = db.query(models.Volunteer).filter(models.Volunteer.id == mentor_id).first()
+    mentee = db.query(models.Volunteer).filter(models.Volunteer.id == mentee_id).first()
+    if not mentor or not mentee:
+        return None
+    if mentee not in mentor.mentees:
+        mentor.mentees.append(mentee)
+        db.commit()
+        db.refresh(mentor)
+    return mentor
+
+
+def remove_mentee_from_mentor(db: Session, mentor_id: int, mentee_id: int):
+    mentor = db.query(models.Volunteer).filter(models.Volunteer.id == mentor_id).first()
+    mentee = db.query(models.Volunteer).filter(models.Volunteer.id == mentee_id).first()
+    if not mentor or not mentee:
+        return None
+    if mentee in mentor.mentees:
+        mentor.mentees.remove(mentee)
+        db.commit()
+        db.refresh(mentor)
+    return mentor

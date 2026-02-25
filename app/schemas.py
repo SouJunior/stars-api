@@ -153,6 +153,14 @@ class VerticalInVolunteer(BaseModel):
     class Config:
         orm_mode = True
 
+class VolunteerShort(BaseModel):
+    id: int
+    name: str
+    linkedin: Optional[str] = None
+    
+    class Config:
+        orm_mode = True
+
 class Vertical(VerticalBase):
     id: int
 
@@ -263,6 +271,8 @@ class Volunteer(VolunteerBase):
     feedbacks: list[FeedbackRead] = []
     certificates: list[Certificate] = []
     badges: list[BadgeRead] = []
+    mentees: list[VolunteerShort] = []
+    mentors: list[VolunteerShort] = []
 
     class Config:
         orm_mode = True
@@ -289,6 +299,8 @@ class VolunteerPublic(VolunteerCommon):
     feedbacks: list[FeedbackRead] = []
     certificates: list[Certificate] = []
     badges: list[BadgeRead] = []
+    mentees: list[VolunteerShort] = []
+    mentors: list[VolunteerShort] = []
 
     class Config:
         orm_mode = True

@@ -298,6 +298,32 @@ def update_volunteer_type(
     return updated_volunteer
 
 
+@app.post("/volunteers/{mentor_id}/mentees/{mentee_id}", response_model=schemas.Volunteer, summary="Adicionar mentorado", description="Adiciona um voluntário como mentorado de outro. Requer autenticação.")
+def add_mentee_to_mentor(
+    mentor_id: int,
+    mentee_id: int,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(head_or_admin)
+):
+    updated_volunteer = crud.add_mentee_to_mentor(db, mentor_id, mentee_id)
+    if updated_volunteer is None:
+        raise HTTPException(status_code=404, detail="Mentor or mentee not found")
+    return updated_volunteer
+
+
+@app.delete("/volunteers/{mentor_id}/mentees/{mentee_id}", response_model=schemas.Volunteer, summary="Remover mentorado", description="Remove a relação de mentoria entre dois voluntários. Requer autenticação.")
+def remove_mentee_from_mentor(
+    mentor_id: int,
+    mentee_id: int,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(head_or_admin)
+):
+    updated_volunteer = crud.remove_mentee_from_mentor(db, mentor_id, mentee_id)
+    if updated_volunteer is None:
+        raise HTTPException(status_code=404, detail="Mentor or mentee not found")
+    return updated_volunteer
+
+
 @app.post("/volunteers/{volunteer_id}/check-apoiase", response_model=schemas.Volunteer, summary="Verificar status do APOIA.se", description="Verifica se o voluntário é um apoiador ativo no APOIA.se e atualiza o status.")
 async def check_volunteer_apoiase(
     volunteer_id: int,

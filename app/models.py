@@ -81,6 +81,13 @@ volunteer_vertical_association = Table(
 )
 
 
+mentor_mentee_association = Table(
+    'mentor_mentee', Base.metadata,
+    Column('mentor_id', Integer, ForeignKey('volunteer.id'), primary_key=True),
+    Column('mentee_id', Integer, ForeignKey('volunteer.id'), primary_key=True)
+)
+
+
 class Vertical(Base):
     __tablename__ = "vertical"
 
@@ -151,6 +158,20 @@ class Volunteer(Base):
     badges = relationship("Badge", back_populates="volunteer")
     verticals = relationship("Vertical", secondary=volunteer_vertical_association, back_populates="volunteers")
     certificates = relationship("Certificate", back_populates="volunteer")
+    mentees = relationship(
+        "Volunteer",
+        secondary=mentor_mentee_association,
+        primaryjoin=(id == mentor_mentee_association.c.mentor_id),
+        secondaryjoin=(id == mentor_mentee_association.c.mentee_id),
+        back_populates="mentors",
+    )
+    mentors = relationship(
+        "Volunteer",
+        secondary=mentor_mentee_association,
+        primaryjoin=(id == mentor_mentee_association.c.mentee_id),
+        secondaryjoin=(id == mentor_mentee_association.c.mentor_id),
+        back_populates="mentees",
+    )
 
     edit_token = Column(String(255), nullable=True, index=True)
     edit_token_expires_at = Column(DateTime, nullable=True)
