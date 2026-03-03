@@ -63,6 +63,44 @@ def send_edit_link_email(email: str, name: str, link: str):
         logger.error(f"Exception when calling TransactionalEmailsApi->send_transac_email: {e}")
         return False
 
+def send_password_reset_email(email: str, name: str, link: str):
+    """
+    Sends a password reset email via Brevo using template 12.
+    """
+    logger.info("========================================")
+    logger.info(f"PASSWORD RESET EMAIL TO: {email} (Name: {name})")
+    logger.info(f"LINK: {link}")
+    logger.info("========================================")
+    print(f"Link de reset de senha enviado para {email} (Name: {name}): {link}")
+
+    if not os.getenv("BREVO_API_KEY"):
+        logger.warning("BREVO_API_KEY not set, skipping actual email sending.")
+        return True
+
+    try:
+        configuration = sib_api_v3_sdk.Configuration()
+        configuration.api_key["api-key"] = os.getenv("BREVO_API_KEY")
+
+        api_instance = sib_api_v3_sdk.TransactionalEmailsApi(
+            sib_api_v3_sdk.ApiClient(configuration)
+        )
+
+        send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
+            to=[{"email": email, "name": name}],
+            template_id=12,
+            params={"reset_password": link},
+            headers={
+                "charset": "iso-8859-1",
+            },
+        )
+
+        api_instance.send_transac_email(send_smtp_email)
+        return True
+
+    except ApiException as e:
+        logger.error(f"Exception when calling TransactionalEmailsApi->send_transac_email: {e}")
+        return False
+
 def send_discord_invite_email(email: str, name: str):
     """
     Sends an email with the Discord invite link via Brevo.

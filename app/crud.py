@@ -431,6 +431,33 @@ def get_dashboard_stats(db: Session):
         "total_volunteers": total_volunteers
     }
 
+def create_password_reset_token(db: Session, email: str):
+    user = db.query(models.User).filter(models.User.email == email).first()
+    if not user:
+        return None
+    
+    token = generate_edit_token()
+    user.reset_token = token
+    user.reset_token_expires_at = datetime.utcnow() + timedelta(hours=2)
+    db.commit()
+    db.refresh(user)
+    return user
+
+def reset_password(db: Session, token: str, new_password: str):
+    user = db.query(models.User).filter(
+        models.User.reset_token == token,
+        models.User.reset_token_expires_at > datetime.utcnow()
+    ).first()
+    
+    if not user:
+        return False
+    
+    user.hashed_password = get_password_hash(new_password)
+    user.reset_token = None
+    user.reset_token_expires_at = None
+    db.commit()
+    return True
+
 def create_volunteer_edit_token(db: Session, email: str):
     volunteer = get_volunteer_by_email(db, email)
     if not volunteer:

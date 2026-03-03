@@ -19,6 +19,8 @@ class User(Base):
     hashed_password = Column(String(255))
     is_active = Column(Boolean, default=True)
     role = Column(Enum(UserRole), default=UserRole.MENTOR, nullable=False)
+    reset_token = Column(String(255), nullable=True, index=True)
+    reset_token_expires_at = Column(DateTime, nullable=True)
 
     items = relationship("Item", back_populates="owner")
     feedbacks = relationship("Feedback", back_populates="author")

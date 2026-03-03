@@ -61,6 +61,29 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     return {"access_token": access_token, "token_type": "bearer", "role": user.role}
 
 
+@app.post("/request-password-reset", summary="Solicitar reset de senha", description="Gera um token de reset de senha e envia para o email do usuário.")
+async def request_password_reset(request: schemas.PasswordResetRequest, db: Session = Depends(get_db)):
+    user = crud.create_password_reset_token(db, request.email)
+    if not user:
+        return {"message": "Se o e-mail estiver cadastrado, um link de reset será enviado."}
+    
+    frontend_url = os.getenv("FRONTEND_URL", "https://stars.soujunior.tech")
+    reset_link = f"{frontend_url}/reset-password?token={user.reset_token}"
+    
+    user_name = user.volunteer.name if user.volunteer else "Usuário"
+    
+    utils.send_password_reset_email(user.email, user_name, reset_link)
+    return {"message": "Se o e-mail estiver cadastrado, um link de reset será enviado."}
+
+
+@app.post("/reset-password", summary="Redefinir senha", description="Redefine a senha do usuário usando o token recebido por email.")
+async def reset_password(data: schemas.PasswordReset, db: Session = Depends(get_db)):
+    success = crud.reset_password(db, data.token, data.new_password)
+    if not success:
+        raise HTTPException(status_code=400, detail="Token inválido ou expirado.")
+    return {"message": "Senha redefinida com sucesso."}
+
+
 @app.get("/users/me/", response_model=schemas.User, summary="Obter usuário autenticado", description="Retorna os detalhes do usuário atualmente autenticado.")
 async def read_users_me(current_user: schemas.User = Depends(get_current_active_user)):
     return current_user

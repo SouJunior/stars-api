@@ -378,6 +378,13 @@ class VolunteerUpdateProfile(BaseModel):
     vertical_ids: Optional[list[int]] = None
 
 
+class PasswordResetRequest(BaseModel):
+    email: str
+
+class PasswordReset(BaseModel):
+    token: str
+    new_password: str
+
 class ProjectBase(BaseModel):
     name: str = Field(..., max_length=100)
     description: Optional[str] = None
