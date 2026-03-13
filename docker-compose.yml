@@ -5,8 +5,8 @@ services:
     env_file:
       - .env
 
-    ports:
-      - '80'
+    # ports:
+    #   - '80'
     volumes:
       - ./:/code/
     restart: on-failure
