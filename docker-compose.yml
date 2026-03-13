@@ -6,7 +6,7 @@ services:
       - .env
 
     ports:
-      - '8000:80'
+      - '8800:80'
     volumes:
       - ./:/code/
     restart: on-failure
