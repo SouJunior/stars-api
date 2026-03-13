@@ -6,11 +6,13 @@ services:
       - .env
 
     ports:
-      - '80'
-    volumes:
-      - ./:/code/
+      - '80:80'
+    # COMENTADO: Volumes podem esconder o código da imagem se não sincronizados
+    # volumes:
+    #   - ./:/code/
     restart: on-failure
-    command: uvicorn app.main:app --host 0.0.0.0 --port 80 --reload
+    # Em produção, não usamos --reload para evitar overhead e problemas com sistemas de arquivos
+    command: uvicorn app.main:app --host 0.0.0.0 --port 80
     # depends_on:
     #   mysql_database:
     #     condition: service_healthy
