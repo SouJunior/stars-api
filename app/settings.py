@@ -16,6 +16,6 @@ class __Settings(BaseSettings):
     APOIASE_API_KEY: str = ""
     APOIASE_API_SECRET: str = ""
 
-    model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8')
+    model_config = SettingsConfigDict(env_file=('../.env'), env_file_encoding='utf-8')
 
 settings = __Settings() # type:ignore
