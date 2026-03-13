@@ -12,4 +12,6 @@ COPY . /code
 # Garante que o diretório /code esteja no PATH do Python para encontrar o módulo 'app'
 ENV PYTHONPATH=/code
 
+EXPOSE 80
+
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]
