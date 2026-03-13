@@ -5,8 +5,8 @@ services:
     env_file:
       - .env
 
-    ports:
-      - '80:80'
+    # ports:
+    #   - '8000:80'
     # COMENTADO: Volumes podem esconder o código da imagem se não sincronizados
     # volumes:
     #   - ./:/code/
