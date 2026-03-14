@@ -26,6 +26,10 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
+@app.get("/health", summary="Health Check", description="Retorna o status da aplicação para monitoramento.")
+async def health_check():
+    return {"status": "ok"}
+
 origins = [
     "http://localhost",
     "http://localhost:5173",

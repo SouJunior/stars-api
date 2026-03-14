@@ -13,6 +13,12 @@ services:
     restart: on-failure
     # Em produção, não usamos --reload para evitar overhead e problemas com sistemas de arquivos
     command: uvicorn app.main:app --host 0.0.0.0 --port 80
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     # depends_on:
     #   mysql_database:
     #     condition: service_healthy
