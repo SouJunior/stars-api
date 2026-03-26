@@ -325,6 +325,23 @@ def update_volunteer_type(
     return updated_volunteer
 
 
+@app.patch("/volunteers/{volunteer_id}/jobtitle/", response_model=schemas.Volunteer)
+def update_volunteer_jobtitle(
+    volunteer_id: int,
+    new_jobtitle_id: int,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(head_or_admin)
+):
+    db_jobtitle = db.query(models.JobTitle).filter(models.JobTitle.id == new_jobtitle_id).first()
+    if not db_jobtitle:
+        raise HTTPException(status_code=404, detail="New job title not found")
+
+    updated_volunteer = crud.update_volunteer_jobtitle(db, volunteer_id, new_jobtitle_id)
+    if updated_volunteer is None:
+        raise HTTPException(status_code=404, detail="Volunteer not found")
+    return updated_volunteer
+
+
 @app.post("/volunteers/{mentor_id}/mentees/{mentee_id}", response_model=schemas.Volunteer, summary="Adicionar mentorado", description="Adiciona um voluntário como mentorado de outro. Requer autenticação.")
 def add_mentee_to_mentor(
     mentor_id: int,

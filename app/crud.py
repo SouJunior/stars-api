@@ -291,17 +291,32 @@ def update_volunteer_squad(db: Session, volunteer_id: int, new_squad_id: int):
         db.refresh(db_volunteer)
     return db_volunteer
 
+def update_volunteer_jobtitle(db: Session, volunteer_id: int, new_jobtitle_id: int):
+    db_volunteer = db.query(models.Volunteer).filter(models.Volunteer.id == volunteer_id).first()
+    if not db_volunteer:
+        return None
+
+    if db_volunteer.jobtitle_id != new_jobtitle_id:
+        db_volunteer.jobtitle_id = new_jobtitle_id
+        db.commit()
+        db.refresh(db_volunteer)
+    return db_volunteer
+
 
 # Vertical CRUD
 def get_verticals(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.Vertical).options(
-        joinedload(models.Vertical.volunteers).joinedload(models.Volunteer.jobtitle)
+        joinedload(models.Vertical.volunteers.and_(
+            models.Volunteer.status.has(models.VolunteerStatus.name == "ACTIVE")
+        )).joinedload(models.Volunteer.jobtitle)
     ).offset(skip).limit(limit).all()
 
 
 def get_vertical(db: Session, vertical_id: int):
     return db.query(models.Vertical).options(
-        joinedload(models.Vertical.volunteers).joinedload(models.Volunteer.jobtitle)
+        joinedload(models.Vertical.volunteers.and_(
+            models.Volunteer.status.has(models.VolunteerStatus.name == "ACTIVE")
+        )).joinedload(models.Volunteer.jobtitle)
     ).filter(models.Vertical.id == vertical_id).first()
 
 
