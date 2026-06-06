@@ -74,6 +74,21 @@ class Squad(Base):
 
     volunteers = relationship("Volunteer", back_populates="squad")
     projects = relationship("Project", secondary=project_squad_association, back_populates="squads")
+    agendas = relationship("SquadAgenda", back_populates="squad")
+
+
+class SquadAgenda(Base):
+    __tablename__ = "squad_agenda"
+
+    id = Column(Integer, primary_key=True)
+    squad_id = Column(Integer, ForeignKey("squad.id"), nullable=False)
+    description = Column(Text, nullable=True)
+    recurrence = Column(String(100), nullable=False)
+    meeting_time = Column(DateTime(timezone=True), nullable=False)
+    title = Column(String(255), nullable=False)
+    is_active = Column(Boolean, default=True)
+
+    squad = relationship("Squad", back_populates="agendas")
 
 
 volunteer_vertical_association = Table(

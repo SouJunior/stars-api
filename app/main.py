@@ -521,6 +521,59 @@ def delete_squad(
     return db_squad
 
 
+# Squad Agenda
+@app.post("/squads/{squad_id}/agendas", response_model=schemas.SquadAgenda, summary="Criar agenda para squad", description="Cria um novo encontro na agenda de uma squad. Requer autenticação de Head ou Admin.")
+def create_squad_agenda(
+    squad_id: int,
+    agenda: schemas.SquadAgendaBase,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(head_or_admin)
+):
+    db_squad = crud.get_squad(db, squad_id=squad_id)
+    if not db_squad:
+        raise HTTPException(status_code=404, detail="Squad not found")
+    
+    agenda_create = schemas.SquadAgendaCreate(**agenda.dict(), squad_id=squad_id)
+    return crud.create_squad_agenda(db=db, agenda=agenda_create)
+
+
+@app.get("/squads/{squad_id}/agendas", response_model=list[schemas.SquadAgenda], summary="Listar agenda da squad", description="Retorna todos os encontros agendados para uma squad específica.")
+def get_squad_agendas(
+    squad_id: int,
+    db: Session = Depends(get_db)
+):
+    db_squad = crud.get_squad(db, squad_id=squad_id)
+    if not db_squad:
+        raise HTTPException(status_code=404, detail="Squad not found")
+    
+    return crud.get_squad_agendas(db, squad_id=squad_id)
+
+
+@app.put("/agendas/{agenda_id}", response_model=schemas.SquadAgenda, summary="Atualizar encontro da agenda", description="Atualiza os detalhes de um encontro na agenda. Requer autenticação de Head ou Admin.")
+def update_squad_agenda(
+    agenda_id: int,
+    agenda: schemas.SquadAgendaUpdate,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(head_or_admin)
+):
+    db_agenda = crud.update_squad_agenda(db, agenda_id=agenda_id, agenda=agenda)
+    if db_agenda is None:
+        raise HTTPException(status_code=404, detail="Agenda item not found")
+    return db_agenda
+
+
+@app.delete("/agendas/{agenda_id}", response_model=schemas.SquadAgenda, summary="Deletar encontro da agenda", description="Remove um encontro da agenda. Requer autenticação de Admin.")
+def delete_squad_agenda(
+    agenda_id: int,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(admin_only)
+):
+    db_agenda = crud.delete_squad_agenda(db, agenda_id=agenda_id)
+    if db_agenda is None:
+        raise HTTPException(status_code=404, detail="Agenda item not found")
+    return db_agenda
+
+
 @app.post("/volunteer-statuses/", response_model=schemas.VolunteerStatus)
 def create_volunteer_status(
     status: schemas.VolunteerStatusCreate,
