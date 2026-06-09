@@ -4,7 +4,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.main import app
 from app.database import Base, get_db
-from app.models import User
+from app import models
+from alembic import command
+from alembic.config import Config
 
 # Configuração do banco de dados de teste em memória
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
