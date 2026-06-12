@@ -150,6 +150,12 @@ class Volunteer(Base):
     volunteer_type_id = Column(Integer, ForeignKey("volunteer_type.id"), nullable=True)
     squad_id = Column(Integer, ForeignKey("squad.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    bio = Column(Text, nullable=True)  # Text ára biografia do voluntário
+    referred_by_name = Column(String(255), nullable=True)
+    referred_by_position = Column(String(255), nullable=True)
+    referred_by_linkedin = Column(String(255), nullable=True)
+    terms_accepted = Column(Boolean, default=False, nullable=False)
+    acceptance_date = Column(DateTime(timezone=True), nullable=True)
 
     jobtitle = relationship("JobTitle", back_populates="volunteers")
     status = relationship("VolunteerStatus", back_populates="volunteers")
