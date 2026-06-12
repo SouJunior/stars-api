@@ -119,6 +119,11 @@ def create_volunteer(db: Session, volunteer: schemas.VolunteerCreate, jobtitle_i
 
     db_volunteer = models.Volunteer(**volunteer.dict(exclude_unset=True, exclude={'vertical_ids'}))
     # Ensure jobtitle_id is set if it wasn't in the dict (though schema says it is required)
+    
+    # Set acceptance_date if terms are accepted at creation time  #US6
+    if db_volunteer.terms_accepted:
+        db_volunteer.acceptance_date = datetime.now()
+        
     if not db_volunteer.jobtitle_id:
          db_volunteer.jobtitle_id = jobtitle_id
 
