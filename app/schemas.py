@@ -184,6 +184,13 @@ class VolunteerBase(VolunteerCommon):
     phone: Optional[str] = Field(None, max_length=30)
     discord: Optional[str] = Field(None, max_length=255)
     email: str = Field(..., max_length=255)
+    
+    #novos campos US 6
+    bio: Optional[str] = None
+    referred_by_name: Optional[str] = Field(None, max_length=255)
+    referred_by_position: Optional[str] = Field(None, max_length=255)
+    referred_by_linkedin: Optional[str] = Field(None, max_length=255)
+    terms_accepted: Optional[bool] = False
 
 class VolunteerCreate(VolunteerBase):
     # name: str
@@ -301,6 +308,8 @@ class VolunteerPublic(VolunteerCommon):
     badges: list[BadgeRead] = []
     mentees: list[VolunteerShort] = []
     mentors: list[VolunteerShort] = []
+    acceptance_date: Optional[datetime] = None
+    
 
     class Config:
         orm_mode = True
@@ -318,6 +327,7 @@ class VolunteerList(VolunteerBase):
     status: Optional[VolunteerStatus] = None
     volunteer_type: Optional[VolunteerType] = None
     squad: Optional['Squad'] = None
+    acceptance_date: Optional[datetime] = None
 
     class Config:
         orm_mode = True
