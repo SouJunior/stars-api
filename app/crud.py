@@ -1,13 +1,30 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, func
 from . import models, schemas
 from app.auth import get_password_hash
+from app.utils import generate_edit_token
+from datetime import datetime, timedelta, timezone, date
+
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    # Fallback for systems without zoneinfo data
+    class ZoneInfo:
+        def __init__(self, key):
+             self.key = key
+        def utcoffset(self, dt):
+             if self.key == "America/Sao_Paulo":
+                 return timedelta(hours=-3)
+             return timedelta(0)
+        def dst(self, dt):
+             return timedelta(0)
+        def tzname(self, dt):
+             return self.key
 
 
 def create_user(db: Session, user: schemas.UserCreate):
     hashed_password = get_password_hash(user.password)
     db_user = models.User(
-        username=user.username,
         email=user.email,
         hashed_password=hashed_password,
         is_active=True,
@@ -29,46 +46,744 @@ def create_user_item(db: Session, item: schemas.ItemCreate, user_id: int):
     db.refresh(db_item)
     return db_item
 
-def get_volunteers(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(
-        models.Volunteer.id,
-        models.Volunteer.name,
-        func.replace(
-            models.Volunteer.email,
-            func.substr(models.Volunteer.email, 1, func.instr(models.Volunteer.email, '@') - 1),
-            '***').label("masked_email"),
-        models.Volunteer.is_active,
-        models.Volunteer.jobtitle_id,
-        models.Volunteer.linkedin,
-        # models.Volunteer.email
-    ).all()
-    # return db.query(models.Volunteer).offset(skip).limit(limit).all()
+def get_volunteers(db: Session, skip: int = 0, limit: int = 100, name: str = None, email: str = None, jobtitle_id: int = None, status_id: int = None, volunteer_type_id: int = None, squad_id: int = None, order: str = "desc"):
+    query = db.query(models.Volunteer).options(
+        joinedload(models.Volunteer.jobtitle),
+        joinedload(models.Volunteer.status),
+        joinedload(models.Volunteer.volunteer_type),
+        joinedload(models.Volunteer.squad),
+        joinedload(models.Volunteer.verticals),
+        joinedload(models.Volunteer.status_history).joinedload(models.VolunteerStatusHistory.status)
+    )
+    if name:
+        query = query.filter(models.Volunteer.name.ilike(f"%{name}%"))
+    if email:
+        query = query.filter(models.Volunteer.email.ilike(f"%{email}%"))
+    if jobtitle_id:
+        query = query.filter(models.Volunteer.jobtitle_id == jobtitle_id)
+    if status_id:
+        query = query.filter(models.Volunteer.status_id == status_id)
+    if volunteer_type_id:
+        query = query.filter(models.Volunteer.volunteer_type_id == volunteer_type_id)
+    if squad_id:
+        query = query.filter(models.Volunteer.squad_id == squad_id)
 
+    if order == "desc":
+        query = query.order_by(models.Volunteer.created_at.desc())
+    else:
+        query = query.order_by(models.Volunteer.created_at.asc())
 
-def get_volunteers_by_email(db: Session, skip: int = 0, limit: int = 100, email: str = ''):
-    return db.query(
-    models.Volunteer.id,
-    models.Volunteer.name,
-    func.replace(
-        models.Volunteer.email,
-        func.substr(models.Volunteer.email, 1, func.instr(models.Volunteer.email, '@') - 1),
-        '***').label("masked_email"),
-    models.Volunteer.is_active,
-    models.Volunteer.jobtitle_id,
-    ).filter(models.Volunteer.email == email).first()
+    return query.offset(skip).limit(limit).all()
 
+def get_volunteer_by_id(db: Session, volunteer_id: int):
+    return db.query(models.Volunteer).options(
+        joinedload(models.Volunteer.jobtitle),
+        joinedload(models.Volunteer.status),
+        joinedload(models.Volunteer.volunteer_type),
+        joinedload(models.Volunteer.squad),
+        joinedload(models.Volunteer.verticals),
+        joinedload(models.Volunteer.status_history).joinedload(models.VolunteerStatusHistory.status),
+        joinedload(models.Volunteer.feedbacks).joinedload(models.Feedback.author).joinedload(models.User.volunteer),
+        joinedload(models.Volunteer.certificates),
+        joinedload(models.Volunteer.badges).joinedload(models.Badge.issuer).joinedload(models.User.volunteer),
+        joinedload(models.Volunteer.mentees),
+        joinedload(models.Volunteer.mentors)
+    ).filter(models.Volunteer.id == volunteer_id).first()
+
+def get_volunteer_by_email(db: Session, email: str):
+    return db.query(models.Volunteer)\
+        .options(
+            joinedload(models.Volunteer.jobtitle),
+            joinedload(models.Volunteer.status),
+            joinedload(models.Volunteer.volunteer_type),
+            joinedload(models.Volunteer.squad),
+            joinedload(models.Volunteer.verticals),
+            joinedload(models.Volunteer.status_history).joinedload(models.VolunteerStatusHistory.status)
+        )\
+        .filter(models.Volunteer.email == email).first()
 
 def create_volunteer(db: Session, volunteer: schemas.VolunteerCreate, jobtitle_id: int):
-    db_volunteer = models.Volunteer(**volunteer.dict())
+    # Get default status "INTERESTED"
+    default_status = db.query(models.VolunteerStatus).filter(models.VolunteerStatus.name == "INTERESTED").first()
+    if not default_status:
+        raise ValueError("Default status 'INTERESTED' not found.")
+
+    # Get default volunteer type "Junior" if not provided
+    if not volunteer.volunteer_type_id:
+        default_type = db.query(models.VolunteerType).filter(models.VolunteerType.name == "Junior").first()
+        if default_type:
+            volunteer.volunteer_type_id = default_type.id
+
+    # Extract vertical_ids before creating the model
+    vertical_ids = volunteer.vertical_ids or []
+
+    db_volunteer = models.Volunteer(**volunteer.dict(exclude_unset=True, exclude={'vertical_ids'}))
+    # Ensure jobtitle_id is set if it wasn't in the dict (though schema says it is required)
+    if not db_volunteer.jobtitle_id:
+         db_volunteer.jobtitle_id = jobtitle_id
+
+    if not db_volunteer.status_id:
+        db_volunteer.status_id = default_status.id
+
     db.add(db_volunteer)
     db.commit()
     db.refresh(db_volunteer)
-    return db_volunteer
 
+    # Add verticals if provided
+    if vertical_ids:
+        verticals = db.query(models.Vertical).filter(models.Vertical.id.in_(vertical_ids)).all()
+        db_volunteer.verticals = verticals
+        db.commit()
+        db.refresh(db_volunteer)
+
+    # Add initial status to history
+    status_history_entry = models.VolunteerStatusHistory(
+        volunteer_id=db_volunteer.id,
+        status_id=db_volunteer.status_id
+    )
+    db.add(status_history_entry)
+    db.commit()
+    db.refresh(db_volunteer)
+    return db_volunteer
 
 def get_jobtitles(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.JobTitle).offset(skip).limit(limit).all()
 
 
-def get_volunteer_by_email(db: Session, email: str):
-    return db.query(models.Volunteer).filter(models.Volunteer.email == email).first()
+# Squad CRUD
+def get_squads(db: Session, skip: int = 0, limit: int = 100):
+    squads = db.query(models.Squad).options(
+        joinedload(models.Squad.volunteers).joinedload(models.Volunteer.jobtitle),
+        joinedload(models.Squad.volunteers).joinedload(models.Volunteer.volunteer_type),
+        joinedload(models.Squad.volunteers).joinedload(models.Volunteer.status),
+        joinedload(models.Squad.projects),
+        joinedload(models.Squad.agendas)
+    ).offset(skip).limit(limit).all()
+    
+    for squad in squads:
+        squad.members_count = len(squad.volunteers)
+        squad.projects_count = len(squad.projects)
+        
+    return squads
+
+def get_squad(db: Session, squad_id: int):
+    squad = db.query(models.Squad).options(
+        joinedload(models.Squad.volunteers).joinedload(models.Volunteer.jobtitle),
+        joinedload(models.Squad.volunteers).joinedload(models.Volunteer.volunteer_type),
+        joinedload(models.Squad.volunteers).joinedload(models.Volunteer.status),
+        joinedload(models.Squad.projects),
+        joinedload(models.Squad.agendas)
+    ).filter(models.Squad.id == squad_id).first()
+    
+    if squad:
+        squad.members_count = len(squad.volunteers)
+        squad.projects_count = len(squad.projects)
+        
+    return squad
+
+def create_squad(db: Session, squad: schemas.SquadCreate):
+    db_squad = models.Squad(name=squad.name, description=squad.description, discord_role_id=squad.discord_role_id)
+    
+    if squad.project_ids:
+        projects = db.query(models.Project).filter(models.Project.id.in_(squad.project_ids)).all()
+        db_squad.projects = projects
+
+    db.add(db_squad)
+    db.commit()
+    db.refresh(db_squad)
+    return db_squad
+
+def update_squad(db: Session, squad_id: int, squad: schemas.SquadUpdate):
+    db_squad = db.query(models.Squad).filter(models.Squad.id == squad_id).first()
+    if not db_squad:
+        return None
+
+    update_data = squad.dict(exclude_unset=True)
+    
+    if 'project_ids' in update_data:
+        project_ids = update_data.pop('project_ids')
+        if project_ids is not None:
+            projects = db.query(models.Project).filter(models.Project.id.in_(project_ids)).all()
+            db_squad.projects = projects
+
+    for var, value in update_data.items():
+        setattr(db_squad, var, value)
+
+    db.commit()
+    db.refresh(db_squad)
+    return db_squad
+
+def delete_squad(db: Session, squad_id: int):
+    db_squad = db.query(models.Squad).filter(models.Squad.id == squad_id).first()
+    if db_squad:
+        db.delete(db_squad)
+        db.commit()
+    return db_squad
+
+
+# Squad Agenda CRUD
+def get_squad_agendas(db: Session, squad_id: int):
+    return db.query(models.SquadAgenda).filter(models.SquadAgenda.squad_id == squad_id).all()
+
+def create_squad_agenda(db: Session, agenda: schemas.SquadAgendaCreate):
+    db_agenda = models.SquadAgenda(**agenda.dict())
+    db.add(db_agenda)
+    db.commit()
+    db.refresh(db_agenda)
+    return db_agenda
+
+def update_squad_agenda(db: Session, agenda_id: int, agenda: schemas.SquadAgendaUpdate):
+    db_agenda = db.query(models.SquadAgenda).filter(models.SquadAgenda.id == agenda_id).first()
+    if not db_agenda:
+        return None
+
+    for key, value in agenda.dict(exclude_unset=True).items():
+        setattr(db_agenda, key, value)
+
+    db.commit()
+    db.refresh(db_agenda)
+    return db_agenda
+
+def delete_squad_agenda(db: Session, agenda_id: int):
+    db_agenda = db.query(models.SquadAgenda).filter(models.SquadAgenda.id == agenda_id).first()
+    if db_agenda:
+        db.delete(db_agenda)
+        db.commit()
+    return db_agenda
+
+
+# Volunteer Status CRUD
+def get_volunteer_statuses(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.VolunteerStatus).offset(skip).limit(limit).all()
+
+def create_volunteer_status(db: Session, status: schemas.VolunteerStatusCreate):
+    db_status = models.VolunteerStatus(name=status.name, description=status.description)
+    db.add(db_status)
+    db.commit()
+    db.refresh(db_status)
+    return db_status
+
+def update_volunteer_status(db: Session, volunteer_id: int, new_status_id: int):
+    db_volunteer = db.query(models.Volunteer).filter(models.Volunteer.id == volunteer_id).first()
+    if not db_volunteer:
+        return None
+
+    # Record current status in history before updating
+    current_status_id = db_volunteer.status_id
+    if current_status_id != new_status_id:
+        status_history_entry = models.VolunteerStatusHistory(
+            volunteer_id=volunteer_id,
+            status_id=new_status_id # We record the *new* status in the history
+        )
+        db.add(status_history_entry)
+
+        db_volunteer.status_id = new_status_id
+
+        # Check if new status is ACTIVE and if invite hasn't been sent yet
+        active_status = db.query(models.VolunteerStatus).filter(models.VolunteerStatus.name == "ACTIVE").first()
+        if active_status and new_status_id == active_status.id:
+            if not db_volunteer.discord_invite_sent:
+                from app.utils import send_discord_invite_email
+                send_discord_invite_email(db_volunteer.email, db_volunteer.name)
+                db_volunteer.discord_invite_sent = True
+
+        db.commit()
+        db.refresh(db_volunteer)
+    return db_volunteer
+
+# Volunteer Type CRUD
+def get_volunteer_types(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.VolunteerType).offset(skip).limit(limit).all()
+
+def create_volunteer_type(db: Session, type_data: schemas.VolunteerTypeBase):
+    db_type = models.VolunteerType(name=type_data.name, description=type_data.description)
+    db.add(db_type)
+    db.commit()
+    db.refresh(db_type)
+    return db_type
+
+def update_volunteer_type(db: Session, volunteer_id: int, new_type_id: int):
+    db_volunteer = db.query(models.Volunteer).filter(models.Volunteer.id == volunteer_id).first()
+    if not db_volunteer:
+        return None
+
+    if db_volunteer.volunteer_type_id != new_type_id:
+        db_volunteer.volunteer_type_id = new_type_id
+        db.commit()
+        db.refresh(db_volunteer)
+    return db_volunteer
+
+def update_volunteer_squad(db: Session, volunteer_id: int, new_squad_id: int):
+    db_volunteer = db.query(models.Volunteer).filter(models.Volunteer.id == volunteer_id).first()
+    if not db_volunteer:
+        return None
+
+    if db_volunteer.squad_id != new_squad_id:
+        db_volunteer.squad_id = new_squad_id
+        db.commit()
+        db.refresh(db_volunteer)
+    return db_volunteer
+
+def update_volunteer_jobtitle(db: Session, volunteer_id: int, new_jobtitle_id: int):
+    db_volunteer = db.query(models.Volunteer).filter(models.Volunteer.id == volunteer_id).first()
+    if not db_volunteer:
+        return None
+
+    if db_volunteer.jobtitle_id != new_jobtitle_id:
+        db_volunteer.jobtitle_id = new_jobtitle_id
+        db.commit()
+        db.refresh(db_volunteer)
+    return db_volunteer
+
+
+# Vertical CRUD
+def get_verticals(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.Vertical).options(
+        joinedload(models.Vertical.volunteers.and_(
+            models.Volunteer.status.has(models.VolunteerStatus.name == "ACTIVE")
+        )).joinedload(models.Volunteer.jobtitle)
+    ).offset(skip).limit(limit).all()
+
+
+def get_vertical(db: Session, vertical_id: int):
+    return db.query(models.Vertical).options(
+        joinedload(models.Vertical.volunteers.and_(
+            models.Volunteer.status.has(models.VolunteerStatus.name == "ACTIVE")
+        )).joinedload(models.Volunteer.jobtitle)
+    ).filter(models.Vertical.id == vertical_id).first()
+
+
+def create_vertical(db: Session, vertical: schemas.VerticalCreate):
+    db_vertical = models.Vertical(name=vertical.name, description=vertical.description)
+    db.add(db_vertical)
+    db.commit()
+    db.refresh(db_vertical)
+    return db_vertical
+
+
+def update_vertical(db: Session, vertical_id: int, vertical: schemas.VerticalUpdate):
+    db_vertical = db.query(models.Vertical).filter(models.Vertical.id == vertical_id).first()
+    if not db_vertical:
+        return None
+    for key, value in vertical.dict(exclude_unset=True).items():
+        setattr(db_vertical, key, value)
+    db.commit()
+    db.refresh(db_vertical)
+    return db_vertical
+
+
+def delete_vertical(db: Session, vertical_id: int):
+    db_vertical = db.query(models.Vertical).filter(models.Vertical.id == vertical_id).first()
+    if db_vertical:
+        db.delete(db_vertical)
+        db.commit()
+    return db_vertical
+
+
+def add_volunteer_to_vertical(db: Session, volunteer_id: int, vertical_id: int):
+    db_volunteer = db.query(models.Volunteer).filter(models.Volunteer.id == volunteer_id).first()
+    db_vertical = db.query(models.Vertical).filter(models.Vertical.id == vertical_id).first()
+    if not db_volunteer or not db_vertical:
+        return None
+    if db_vertical not in db_volunteer.verticals:
+        db_volunteer.verticals.append(db_vertical)
+        db.commit()
+        db.refresh(db_volunteer)
+    return db_volunteer
+
+
+def remove_volunteer_from_vertical(db: Session, volunteer_id: int, vertical_id: int):
+    db_volunteer = db.query(models.Volunteer).filter(models.Volunteer.id == volunteer_id).first()
+    db_vertical = db.query(models.Vertical).filter(models.Vertical.id == vertical_id).first()
+    if not db_volunteer or not db_vertical:
+        return None
+    if db_vertical in db_volunteer.verticals:
+        db_volunteer.verticals.remove(db_vertical)
+        db.commit()
+        db.refresh(db_volunteer)
+    return db_volunteer
+
+
+def update_volunteer_verticals(db: Session, volunteer_id: int, vertical_ids: list[int]):
+    db_volunteer = db.query(models.Volunteer).filter(models.Volunteer.id == volunteer_id).first()
+    if not db_volunteer:
+        return None
+    
+    verticals = db.query(models.Vertical).filter(models.Vertical.id.in_(vertical_ids)).all()
+    db_volunteer.verticals = verticals
+    db.commit()
+    db.refresh(db_volunteer)
+    return db_volunteer
+
+
+def get_dashboard_stats(db: Session):
+    # 1. Group by status
+    status_counts = db.query(
+        models.VolunteerStatus.name, func.count(models.Volunteer.id)
+    ).join(
+        models.Volunteer, models.Volunteer.status_id == models.VolunteerStatus.id
+    ).group_by(
+        models.VolunteerStatus.name
+    ).all()
+    
+    stats_by_status = [{"status": name, "count": count} for name, count in status_counts]
+    
+    # 2. Group by squad
+    squad_counts = db.query(
+        models.Squad.name, func.count(models.Volunteer.id)
+    ).join(
+        models.Volunteer, models.Volunteer.squad_id == models.Squad.id
+    ).group_by(
+        models.Squad.name
+    ).all()
+
+    stats_by_squad = [{"squad": name, "count": count} for name, count in squad_counts]
+
+    # 3. Group by volunteer type
+    type_counts = db.query(
+        models.VolunteerType.name, func.count(models.Volunteer.id)
+    ).join(
+        models.Volunteer, models.Volunteer.volunteer_type_id == models.VolunteerType.id
+    ).group_by(
+        models.VolunteerType.name
+    ).all()
+
+    stats_by_type = [{"volunteer_type": name, "count": count} for name, count in type_counts]
+
+    # 4. Registered today (Brasilia)
+    try:
+        tz_brasilia = ZoneInfo("America/Sao_Paulo")
+    except Exception:
+         tz_brasilia = timezone(timedelta(hours=-3))
+
+    now_brasilia = datetime.now(tz_brasilia)
+    
+    # Start of day in Brasilia
+    start_of_day_brasilia = now_brasilia.replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    # Convert to UTC for DB query
+    start_of_day_utc = start_of_day_brasilia.astimezone(timezone.utc)
+    
+    count_today = db.query(models.Volunteer).filter(
+        models.Volunteer.created_at >= start_of_day_utc
+    ).count()
+
+    # 4. Total volunteers
+    total_volunteers = db.query(models.Volunteer).count()
+    
+    return {
+        "total_volunteers_by_status": stats_by_status,
+        "total_volunteers_by_squad": stats_by_squad,
+        "total_volunteers_by_type": stats_by_type,
+        "total_volunteers_registered_today": count_today,
+        "total_volunteers": total_volunteers
+    }
+
+def create_password_reset_token(db: Session, email: str):
+    user = db.query(models.User).filter(models.User.email == email).first()
+    if not user:
+        return None
+    
+    token = generate_edit_token()
+    user.reset_token = token
+    user.reset_token_expires_at = datetime.utcnow() + timedelta(hours=2)
+    db.commit()
+    db.refresh(user)
+    return user
+
+def reset_password(db: Session, token: str, new_password: str):
+    user = db.query(models.User).filter(
+        models.User.reset_token == token,
+        models.User.reset_token_expires_at > datetime.utcnow()
+    ).first()
+    
+    if not user:
+        return False
+    
+    user.hashed_password = get_password_hash(new_password)
+    user.reset_token = None
+    user.reset_token_expires_at = None
+    db.commit()
+    return True
+
+def create_volunteer_edit_token(db: Session, email: str):
+    volunteer = get_volunteer_by_email(db, email)
+    if not volunteer:
+        return None
+    
+    token = generate_edit_token()
+    # Expire in 1 hour. Using UTC for consistency.
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
+    
+    volunteer.edit_token = token
+    volunteer.edit_token_expires_at = expires_at
+    db.commit()
+    db.refresh(volunteer)
+    return volunteer
+
+def get_volunteer_by_token(db: Session, token: str):
+    return db.query(models.Volunteer).filter(models.Volunteer.edit_token == token).first()
+
+def update_volunteer_profile_by_token(db: Session, token: str, profile_data: schemas.VolunteerUpdateProfile):
+    volunteer = get_volunteer_by_token(db, token)
+    if not volunteer:
+        return None, "Token inválido"
+    
+    # Check Expiration
+    # Ensure both are offset-aware or both naive. 
+    # If DB returns naive, assume UTC if we stored UTC.
+    now = datetime.now(timezone.utc)
+    if volunteer.edit_token_expires_at:
+        expiry = volunteer.edit_token_expires_at
+        if expiry.tzinfo is None:
+            expiry = expiry.replace(tzinfo=timezone.utc)
+        
+        if expiry < now:
+            return None, "Link expirado"
+    else:
+        return None, "Token inválido"
+
+    # Check Daily Limit
+    today = date.today()
+    if volunteer.last_edit_date != today:
+        volunteer.daily_edits_count = 0
+        volunteer.last_edit_date = today
+    
+    if volunteer.daily_edits_count >= 2:
+        return None, "Limite diário de edições atingido (2 alterações por dia)"
+
+    # Update Fields
+    if profile_data.name:
+        volunteer.name = profile_data.name
+    if profile_data.linkedin:
+        volunteer.linkedin = profile_data.linkedin
+    if profile_data.volunteer_type_id:
+        volunteer.volunteer_type_id = profile_data.volunteer_type_id
+
+    # Allow updating phone/discord/github to null/empty if passed, or new value
+    volunteer.phone = profile_data.phone
+    volunteer.discord = profile_data.discord
+    volunteer.github = profile_data.github
+
+    # Update verticals if provided
+    if profile_data.vertical_ids is not None:
+        verticals = db.query(models.Vertical).filter(models.Vertical.id.in_(profile_data.vertical_ids)).all()
+        volunteer.verticals = verticals
+
+    volunteer.daily_edits_count += 1
+
+    db.commit()
+    db.refresh(volunteer)
+    return volunteer, None
+
+
+# Project CRUD
+def create_project(db: Session, project: schemas.ProjectCreate):
+    db_project = models.Project(
+        name=project.name,
+        description=project.description,
+        link=project.link
+    )
+    
+    if project.squad_ids:
+        squads = db.query(models.Squad).filter(models.Squad.id.in_(project.squad_ids)).all()
+        db_project.squads = squads
+        
+    db.add(db_project)
+    db.commit()
+    db.refresh(db_project)
+    return db_project
+
+
+def get_projects(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.Project).options(joinedload(models.Project.squads)).offset(skip).limit(limit).all()
+
+
+def get_project(db: Session, project_id: int):
+    return db.query(models.Project).options(joinedload(models.Project.squads)).filter(models.Project.id == project_id).first()
+
+
+def delete_project(db: Session, project_id: int):
+    db_project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if db_project:
+        db.delete(db_project)
+        db.commit()
+    return db_project
+
+
+# Feedback CRUD
+def create_feedback(db: Session, feedback: schemas.FeedbackCreate, user_id: int, volunteer_id: int):
+    db_feedback = models.Feedback(**feedback.dict(), user_id=user_id, volunteer_id=volunteer_id)
+    db.add(db_feedback)
+    db.commit()
+    db.refresh(db_feedback)
+    return db_feedback
+
+def get_feedbacks_for_volunteer(db: Session, volunteer_id: int, skip: int = 0, limit: int = 100):
+    return db.query(models.Feedback).options(
+        joinedload(models.Feedback.author).joinedload(models.User.volunteer)
+    ).filter(models.Feedback.volunteer_id == volunteer_id)\
+        .order_by(models.Feedback.created_at.desc())\
+        .offset(skip).limit(limit).all()
+
+def get_feedback(db: Session, feedback_id: int):
+    return db.query(models.Feedback).filter(models.Feedback.id == feedback_id).first()
+
+def update_feedback(db: Session, feedback_id: int, feedback: schemas.FeedbackUpdate):
+    db_feedback = db.query(models.Feedback).filter(models.Feedback.id == feedback_id).first()
+    if not db_feedback:
+        return None
+    
+    db_feedback.content = feedback.content
+    db.commit()
+    db.refresh(db_feedback)
+    return db_feedback
+
+def delete_feedback(db: Session, feedback_id: int):
+    db_feedback = db.query(models.Feedback).filter(models.Feedback.id == feedback_id).first()
+    if db_feedback:
+        db.delete(db_feedback)
+        db.commit()
+    return db_feedback
+
+
+# JobOpening CRUD
+def create_job_opening(db: Session, job: schemas.JobOpeningCreate, user_id: int):
+    db_job = models.JobOpening(**job.dict(), owner_id=user_id)
+    db.add(db_job)
+    db.commit()
+    db.refresh(db_job)
+    return db_job
+
+
+def get_job_openings(db: Session, skip: int = 0, limit: int = 100, active_only: bool = False):
+    query = db.query(models.JobOpening)
+    if active_only:
+        query = query.filter(models.JobOpening.is_active == True)
+    return query.order_by(models.JobOpening.created_at.desc()).offset(skip).limit(limit).all()
+
+
+def get_job_opening(db: Session, job_id: int):
+    return db.query(models.JobOpening).filter(models.JobOpening.id == job_id).first()
+
+
+def update_job_opening(db: Session, job_id: int, job: schemas.JobOpeningCreate):
+    db_job = db.query(models.JobOpening).filter(models.JobOpening.id == job_id).first()
+    if not db_job:
+        return None
+    
+    for key, value in job.dict().items():
+        setattr(db_job, key, value)
+    
+    db.commit()
+    db.refresh(db_job)
+    return db_job
+
+
+def delete_job_opening(db: Session, job_id: int):
+    db_job = db.query(models.JobOpening).filter(models.JobOpening.id == job_id).first()
+    if db_job:
+        db.delete(db_job)
+        db.commit()
+    return db_job
+
+
+# JobApplication CRUD
+def create_job_application(db: Session, application: schemas.JobApplicationCreate):
+    # Check if already applied
+    existing = db.query(models.JobApplication).filter(
+        models.JobApplication.job_id == application.job_id,
+        models.JobApplication.volunteer_id == application.volunteer_id
+    ).first()
+    
+    if existing:
+        return existing # Or raise error
+
+    db_application = models.JobApplication(**application.dict())
+    db.add(db_application)
+    db.commit()
+    db.refresh(db_application)
+    return db_application
+
+
+def get_job_applications(db: Session, job_id: int, skip: int = 0, limit: int = 100):
+    return db.query(models.JobApplication).filter(models.JobApplication.job_id == job_id)\
+        .options(joinedload(models.JobApplication.volunteer))\
+        .offset(skip).limit(limit).all()
+
+
+# Certificate CRUD
+def create_certificate(db: Session, certificate: schemas.CertificateCreate, issuer_id: int):
+    db_certificate = models.Certificate(**certificate.dict(), issuer_id=issuer_id)
+    db.add(db_certificate)
+    db.commit()
+    db.refresh(db_certificate)
+    return db_certificate
+
+
+def get_certificates_for_volunteer(db: Session, volunteer_id: int, include_cancelled: bool = False):
+    query = db.query(models.Certificate).filter(models.Certificate.volunteer_id == volunteer_id)
+    if not include_cancelled:
+        query = query.filter(models.Certificate.is_cancelled == False)
+    return query.all()
+
+
+def get_certificate(db: Session, certificate_id: int):
+    return db.query(models.Certificate).filter(models.Certificate.id == certificate_id).first()
+
+
+def cancel_certificate(db: Session, certificate_id: int):
+    db_certificate = db.query(models.Certificate).filter(models.Certificate.id == certificate_id).first()
+    if db_certificate:
+        db_certificate.is_cancelled = True
+        db.commit()
+        db.refresh(db_certificate)
+    return db_certificate
+
+
+# Badge CRUD
+def create_badge(db: Session, badge: schemas.BadgeCreate, issuer_id: int):
+    db_badge = models.Badge(**badge.dict(), issuer_id=issuer_id)
+    db.add(db_badge)
+    db.commit()
+    db.refresh(db_badge)
+    return db_badge
+
+
+def get_badges_for_volunteer(db: Session, volunteer_id: int):
+    return db.query(models.Badge).options(
+        joinedload(models.Badge.issuer).joinedload(models.User.volunteer)
+    ).filter(models.Badge.volunteer_id == volunteer_id)\
+        .order_by(models.Badge.created_at.desc()).all()
+
+
+def delete_badge(db: Session, badge_id: int):
+    db_badge = db.query(models.Badge).filter(models.Badge.id == badge_id).first()
+    if db_badge:
+        db.delete(db_badge)
+        db.commit()
+    return db_badge
+
+
+def add_mentee_to_mentor(db: Session, mentor_id: int, mentee_id: int):
+    mentor = db.query(models.Volunteer).filter(models.Volunteer.id == mentor_id).first()
+    mentee = db.query(models.Volunteer).filter(models.Volunteer.id == mentee_id).first()
+    if not mentor or not mentee:
+        return None
+    if mentee not in mentor.mentees:
+        mentor.mentees.append(mentee)
+        db.commit()
+        db.refresh(mentor)
+    return mentor
+
+
+def remove_mentee_from_mentor(db: Session, mentor_id: int, mentee_id: int):
+    mentor = db.query(models.Volunteer).filter(models.Volunteer.id == mentor_id).first()
+    mentee = db.query(models.Volunteer).filter(models.Volunteer.id == mentee_id).first()
+    if not mentor or not mentee:
+        return None
+    if mentee in mentor.mentees:
+        mentor.mentees.remove(mentee)
+        db.commit()
+        db.refresh(mentor)
+    return mentor

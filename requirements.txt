@@ -32,4 +32,6 @@ typing_extensions==4.12.2
 urllib3==2.2.3
 uvicorn==0.31.1
 wheel==0.44.0
+pytest
+httpx
 

@@ -2,46 +2,45 @@ services:
   stars-api:
     build: .
     container_name: stars-api
-    environment:
-      PORT: 8000
-      DEBUG: 1
-      DB_DRIVER: mysql+mysqlconnector
-      DB_USERNAME: mysql
-      DB_PASSWORD: mysql
-      DB_HOST: mysql_database
-      DB_PORT: 3306
-      DB_DATABASE: db
-      JWT_SECRETE_KEY: testestestestetsteste
-      PASSWORD_HASH_ALGORITHM: HS256
-      JWT_EXPIRE_MINUTES: 30
-    ports:
-      - '8000:80'
-    volumes:
-      - ./app:/code/app
+    env_file:
+      - .env
+
+    # ports:
+    #   - '8000:80'
+    # COMENTADO: Volumes podem esconder o código da imagem se não sincronizados
+    # volumes:
+    #   - ./:/code/
     restart: on-failure
-    command: uvicorn app.main:app --host 0.0.0.0 --port 80 --reload
-    depends_on:
-      mysql_database:
-        condition: service_healthy
-
-  mysql_database:
-    image: mysql:8.3
-    restart: unless-stopped
-    command: --default-authentication-plugin=caching_sha2_password
-    environment:
-      MYSQL_DATABASE: 'db'
-      MYSQL_USER: 'mysql'
-      MYSQL_PASSWORD: 'mysql'
-      MYSQL_ROOT_PASSWORD: 'mysql'
-    ports:
-      - '3306:3306'
-    volumes:
-      - mysql_database:/var/lib/mysql
+    # Em produção, não usamos --reload para evitar overhead e problemas com sistemas de arquivos
+    command: uvicorn app.main:app --host 0.0.0.0 --port 80
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
-      timeout: 20s
-      retries: 10
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # depends_on:
+    #   mysql_database:
+    #     condition: service_healthy
 
-volumes:
-  mysql_database:
-    name: mysql_database
+  # mysql_database:
+  #   image: mysql:8.3
+  #   restart: unless-stopped
+  #   command: --default-authentication-plugin=caching_sha2_password
+  #   environment:
+  #     MYSQL_DATABASE: 'db'
+  #     MYSQL_USER: 'mysql'
+  #     MYSQL_PASSWORD: 'mysql'
+  #     MYSQL_ROOT_PASSWORD: 'mysql'
+  #   ports:
+  #     - '3307:3306'
+  #   volumes:
+  #     - mysql_database:/var/lib/mysql
+  #   healthcheck:
+  #     test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+  #     timeout: 20s
+  #     retries: 10
+
+# volumes:
+#   mysql_database:
+#     name: mysql_database
