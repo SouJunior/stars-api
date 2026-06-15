@@ -161,7 +161,8 @@ def get_squads(db: Session, skip: int = 0, limit: int = 100):
         joinedload(models.Squad.volunteers).joinedload(models.Volunteer.jobtitle),
         joinedload(models.Squad.volunteers).joinedload(models.Volunteer.volunteer_type),
         joinedload(models.Squad.volunteers).joinedload(models.Volunteer.status),
-        joinedload(models.Squad.projects)
+        joinedload(models.Squad.projects),
+        joinedload(models.Squad.agendas)
     ).offset(skip).limit(limit).all()
     
     for squad in squads:
@@ -175,7 +176,8 @@ def get_squad(db: Session, squad_id: int):
         joinedload(models.Squad.volunteers).joinedload(models.Volunteer.jobtitle),
         joinedload(models.Squad.volunteers).joinedload(models.Volunteer.volunteer_type),
         joinedload(models.Squad.volunteers).joinedload(models.Volunteer.status),
-        joinedload(models.Squad.projects)
+        joinedload(models.Squad.projects),
+        joinedload(models.Squad.agendas)
     ).filter(models.Squad.id == squad_id).first()
     
     if squad:
@@ -222,6 +224,37 @@ def delete_squad(db: Session, squad_id: int):
         db.delete(db_squad)
         db.commit()
     return db_squad
+
+
+# Squad Agenda CRUD
+def get_squad_agendas(db: Session, squad_id: int):
+    return db.query(models.SquadAgenda).filter(models.SquadAgenda.squad_id == squad_id).all()
+
+def create_squad_agenda(db: Session, agenda: schemas.SquadAgendaCreate):
+    db_agenda = models.SquadAgenda(**agenda.dict())
+    db.add(db_agenda)
+    db.commit()
+    db.refresh(db_agenda)
+    return db_agenda
+
+def update_squad_agenda(db: Session, agenda_id: int, agenda: schemas.SquadAgendaUpdate):
+    db_agenda = db.query(models.SquadAgenda).filter(models.SquadAgenda.id == agenda_id).first()
+    if not db_agenda:
+        return None
+
+    for key, value in agenda.dict(exclude_unset=True).items():
+        setattr(db_agenda, key, value)
+
+    db.commit()
+    db.refresh(db_agenda)
+    return db_agenda
+
+def delete_squad_agenda(db: Session, agenda_id: int):
+    db_agenda = db.query(models.SquadAgenda).filter(models.SquadAgenda.id == agenda_id).first()
+    if db_agenda:
+        db.delete(db_agenda)
+        db.commit()
+    return db_agenda
 
 
 # Volunteer Status CRUD

@@ -80,6 +80,30 @@ class SquadBase(BaseModel):
     description: Optional[str] = Field(None, max_length=255)
     discord_role_id: Optional[str] = Field(None, max_length=255)
 
+class SquadAgendaBase(BaseModel):
+    description: Optional[str] = None
+    recurrence: str = Field(..., max_length=100)
+    meeting_time: datetime
+    title: str = Field(..., max_length=255)
+    is_active: Optional[bool] = True
+
+class SquadAgendaCreate(SquadAgendaBase):
+    squad_id: int
+
+class SquadAgendaUpdate(BaseModel):
+    description: Optional[str] = None
+    recurrence: Optional[str] = Field(None, max_length=100)
+    meeting_time: Optional[datetime] = None
+    title: Optional[str] = Field(None, max_length=255)
+    is_active: Optional[bool] = None
+
+class SquadAgenda(SquadAgendaBase):
+    id: int
+    squad_id: int
+
+    class Config:
+        orm_mode = True
+
 class SquadCreate(SquadBase):
     project_ids: Optional[list[int]] = []
 
@@ -87,6 +111,7 @@ class Squad(SquadBase):
     id: int
     volunteers: list[VolunteerInSquad] = []
     projects: list[ProjectInSquad] = []
+    agendas: list[SquadAgenda] = []
     members_count: Optional[int] = 0
     projects_count: Optional[int] = 0
     discord_role_id: Optional[str] = Field(None, max_length=255)

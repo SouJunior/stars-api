@@ -1,0 +1,43 @@
+services:
+  stars-api-local:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: stars-api-local
+    env_file:
+      - .env
+    dns:
+      - 192.168.15.1
+      - 8.8.8.8
+    ports:
+      - '8800:80'
+    volumes:
+      - .:/code
+    restart: on-failure
+    command: uvicorn app.main:app --host 0.0.0.0 --port 80 --reload
+    depends_on:
+      mysql_database_local:
+        condition: service_healthy
+
+  mysql_database_local:
+    image: mysql:8.3
+    container_name: mysql_database_local
+    restart: unless-stopped
+    command: --default-authentication-plugin=caching_sha2_password
+    environment:
+      MYSQL_DATABASE: 'stars'
+      MYSQL_USER: 'mysql'
+      MYSQL_PASSWORD: 'mysql'
+      MYSQL_ROOT_PASSWORD: 'mysql'
+    ports:
+      - '3306:3306'
+    volumes:
+      - mysql_database_local:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+volumes:
+  mysql_database_local:
+    name: mysql_database_local
