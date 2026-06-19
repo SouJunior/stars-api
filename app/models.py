@@ -154,6 +154,7 @@ class Volunteer(Base):
     name = Column(String(255), index=True)
     linkedin = Column(String(255), index=True)
     github = Column(String(255), index=True, nullable=True)
+    techs = relationship("VolunteerTech", backref="volunteer", cascade="all, delete-orphan")
     email = Column(String(255), index=True)
     phone = Column(String(30))
     discord = Column(String(255), nullable=True)
@@ -171,6 +172,7 @@ class Volunteer(Base):
     referred_by_linkedin = Column(String(255), nullable=True)
     terms_accepted = Column(Boolean, default=False, nullable=False)
     acceptance_date = Column(DateTime(timezone=True), nullable=True)
+    
 
     jobtitle = relationship("JobTitle", back_populates="volunteers")
     status = relationship("VolunteerStatus", back_populates="volunteers")
@@ -207,6 +209,15 @@ class Volunteer(Base):
             parts = self.email.split('@')
             return '***@' + parts[1]
         return self.email # Or return None if preferred for invalid emails
+    
+class VolunteerTech(Base): #nova tabela para armazenar as tecnologias dos voluntários
+    __tablename__ = "volunteer_tech"
+
+    id           = Column(Integer, primary_key=True, autoincrement=True)
+    volunteer_id = Column(Integer, ForeignKey("volunteer.id", ondelete="CASCADE"), nullable=False)
+    area         = Column(Enum("frontend", "backend"), nullable=False)
+    tech         = Column(String(100), nullable=False)
+
 
 
 class VolunteerStatusHistory(Base):

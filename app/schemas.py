@@ -259,11 +259,14 @@ class VolunteerCreate(VolunteerBase):
     # name: str
     # email: str
     # masked_email: Optional[str] = None
+    techs_frontend: list[str] = []
+    techs_backend:  list[str] = []
     is_active: Optional[bool] = True
     jobtitle_id: int
     volunteer_type_id: Optional[int] = None
     squad_id: Optional[int] = None
     vertical_ids: Optional[list[int]] = None
+    
 
 class FeedbackBase(BaseModel):
     content: str

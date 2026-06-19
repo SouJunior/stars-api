@@ -13,19 +13,19 @@ services:
     depends_on:
       - mysql_database
 
-  mysql_database:
-    image: mysql:8.3
-    container_name: mysql_stars
-    restart: unless-stopped
-    command: --default-authentication-plugin=caching_sha2_password
-    environment:
-      MYSQL_DATABASE: 'stars'
-      MYSQL_ROOT_PASSWORD: 'root' # Define a senha diretamente para o usuário root padrão
-    ports:
-      - '3306:3306'
-    volumes:
-      - mysql_database:/var/lib/mysql
+#   mysql_database:
+#     image: mysql:8.3
+#     container_name: mysql_stars
+#     restart: unless-stopped
+#     command: --default-authentication-plugin=caching_sha2_password
+#     environment:
+#       MYSQL_DATABASE: 'stars'
+#       MYSQL_ROOT_PASSWORD: 'root' # Define a senha diretamente para o usuário root padrão
+#     ports:
+#       - '3306:3306'
+#     volumes:
+#       - mysql_database:/var/lib/mysql
 
-volumes:
-  mysql_database:
-    name: mysql_database
+# volumes:
+#   mysql_database:
+#     name: mysql_database

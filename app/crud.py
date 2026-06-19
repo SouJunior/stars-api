@@ -117,7 +117,7 @@ def create_volunteer(db: Session, volunteer: schemas.VolunteerCreate, jobtitle_i
     # Extract vertical_ids before creating the model
     vertical_ids = volunteer.vertical_ids or []
 
-    db_volunteer = models.Volunteer(**volunteer.dict(exclude_unset=True, exclude={'vertical_ids'}))
+    db_volunteer = models.Volunteer(**volunteer.dict(exclude_unset=True, exclude={'vertical_ids', 'techs_frontend', 'techs_backend'}))
     # Ensure jobtitle_id is set if it wasn't in the dict (though schema says it is required)
     
     # Set acceptance_date if terms are accepted at creation time  #US6
@@ -138,8 +138,26 @@ def create_volunteer(db: Session, volunteer: schemas.VolunteerCreate, jobtitle_i
     if vertical_ids:
         verticals = db.query(models.Vertical).filter(models.Vertical.id.in_(vertical_ids)).all()
         db_volunteer.verticals = verticals
-        db.commit()
-        db.refresh(db_volunteer)
+        
+        # Persistir techs frontend
+    for tech in volunteer.techs_frontend:
+        db.add(models.VolunteerTech(
+            volunteer_id=db_volunteer.id,
+            area="frontend",
+            tech=tech
+        ))
+
+    # Persistir techs backend
+    for tech in volunteer.techs_backend:
+        db.add(models.VolunteerTech(
+            volunteer_id=db_volunteer.id,
+            area="backend",
+            tech=tech
+        ))
+
+        
+    db.commit()
+    db.refresh(db_volunteer)
 
     # Add initial status to history
     status_history_entry = models.VolunteerStatusHistory(
