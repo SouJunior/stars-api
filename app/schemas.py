@@ -1,7 +1,7 @@
 import re
 
 from pydantic import BaseModel, Field, validator
-from typing import Optional, Union
+from typing import List, Optional, Union
 from datetime import datetime
 import enum
 
@@ -254,13 +254,16 @@ class VolunteerBase(VolunteerCommon):
                 raise ValueError("Digite um link válido do LinkedIn (deve conter /in/)")
                 
         return v
+    
+class VolunteerTechSchema(BaseModel):
+    area: str
+    tech: str
 
 class VolunteerCreate(VolunteerBase):
     # name: str
     # email: str
     # masked_email: Optional[str] = None
-    techs_frontend: list[str] = []
-    techs_backend:  list[str] = []
+    techs: Optional[List[VolunteerTechSchema]] = []
     is_active: Optional[bool] = True
     jobtitle_id: int
     volunteer_type_id: Optional[int] = None

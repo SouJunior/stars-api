@@ -215,10 +215,8 @@ class VolunteerTech(Base): #nova tabela para armazenar as tecnologias dos volunt
 
     id           = Column(Integer, primary_key=True, autoincrement=True)
     volunteer_id = Column(Integer, ForeignKey("volunteer.id", ondelete="CASCADE"), nullable=False)
-    area         = Column(Enum("frontend", "backend"), nullable=False)
+    area         = Column(String(100), nullable=False)
     tech         = Column(String(100), nullable=False)
-
-
 
 class VolunteerStatusHistory(Base):
     __tablename__ = "volunteer_status_history"

@@ -117,7 +117,7 @@ def create_volunteer(db: Session, volunteer: schemas.VolunteerCreate, jobtitle_i
     # Extract vertical_ids before creating the model
     vertical_ids = volunteer.vertical_ids or []
 
-    db_volunteer = models.Volunteer(**volunteer.dict(exclude_unset=True, exclude={'vertical_ids', 'techs_frontend', 'techs_backend'}))
+    db_volunteer = models.Volunteer(**volunteer.dict(exclude_unset=True, exclude={'vertical_ids', 'techs', 'techs_frontend', 'techs_backend'}))
     # Ensure jobtitle_id is set if it wasn't in the dict (though schema says it is required)
     
     # Set acceptance_date if terms are accepted at creation time  #US6
@@ -139,22 +139,20 @@ def create_volunteer(db: Session, volunteer: schemas.VolunteerCreate, jobtitle_i
         verticals = db.query(models.Vertical).filter(models.Vertical.id.in_(vertical_ids)).all()
         db_volunteer.verticals = verticals
         
-        # Persistir techs frontend
-    for tech in volunteer.techs_frontend:
-        db.add(models.VolunteerTech(
-            volunteer_id=db_volunteer.id,
-            area="frontend",
-            tech=tech
-        ))
-
-    # Persistir techs backend
-    for tech in volunteer.techs_backend:
-        db.add(models.VolunteerTech(
-            volunteer_id=db_volunteer.id,
-            area="backend",
-            tech=tech
-        ))
-
+        #Substitui os dois loops antigos por este
+    if hasattr(volunteer, 'techs') and volunteer.techs:
+        for item in volunteer.techs:
+            # 1. Garante que temos os dados em formato de dicionário puro
+            tech_data = item if isinstance(item, dict) else item.dict()
+            
+            # 2. Criamos a instância do modelo do banco passando os dados mapeados
+            nova_tech = models.VolunteerTech(
+                volunteer_id=db_volunteer.id,
+                area=tech_data.get("area"),
+                tech=tech_data.get("tech")
+            )
+            
+            db.add(nova_tech)
         
     db.commit()
     db.refresh(db_volunteer)
