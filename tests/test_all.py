@@ -56,7 +56,7 @@ def test_login_for_access_token():
         "/users/",
         json={"email": "loginuser@example.com", "password": "loginpassword", "registration_code": "changeme"},
     )
-    
+
     response = client.post(
         "/token",
         data={"username": "loginuser@example.com", "password": "loginpassword"},
@@ -84,10 +84,10 @@ def test_read_users_me_authorized():
         data={"username": "me_user@example.com", "password": "me_password"},
     )
     token = login_response.json()["access_token"]
-    
+
     headers = {"Authorization": f"Bearer {token}"}
     response = client.get("/users/me/", headers=headers)
-    
+
     assert response.status_code == 200
     data = response.json()
     assert data["email"] == "me_user@example.com"
