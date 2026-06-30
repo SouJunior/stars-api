@@ -33,6 +33,7 @@ async def health_check():
 origins = [
     "http://localhost",
     "http://localhost:5173",
+    "http://localhost:5174",
     "http://localhost:8080",
     "https://stars.soujunior.tech",
 ]

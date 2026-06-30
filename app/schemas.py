@@ -1,5 +1,7 @@
-from pydantic import BaseModel, Field
-from typing import Optional, Union
+import re
+
+from pydantic import BaseModel, Field, validator
+from typing import List, Optional, Union
 from datetime import datetime
 import enum
 
@@ -209,16 +211,65 @@ class VolunteerBase(VolunteerCommon):
     phone: Optional[str] = Field(None, max_length=30)
     discord: Optional[str] = Field(None, max_length=255)
     email: str = Field(..., max_length=255)
+    
+    #novos campos US 6
+    bio: Optional[str] = None
+    referred_by_name: Optional[str] = Field(None, max_length=100)
+    referred_by_position: Optional[str] = Field(None, max_length=100)
+    referred_by_linkedin: Optional[str] = Field(None, max_length=150)
+    terms_accepted: Optional[bool] = False
+    
+    # 1 VALIDAÇÃO: Nome de quem indicou (Alfanumérico + Acentos + Espaços)
+    @validator('referred_by_name')
+    def validate_referred_name(cls, v):
+        if v:
+            # Regex que permite letras (com acentos), números e espaços. Bloqueia @, #, $, etc.
+            if not re.match(r"^[a-zA-Z0-9áéíóúâêîôûãõçÁÉÍÓÚÂÊÎÔÛÃÕÇ\s]+$", v):
+                raise ValueError("O nome não deve conter caracteres especiais")
+        return v
+    
+    # 2 VALIDAÇÃO: Cargo de quem indicou (Alfanumérico + Acentos + Espaços)
+    @validator('referred_by_position')
+    def validate_referred_position(cls, v):
+        if v:
+            if not re.match(r"^[a-zA-Z0-9áéíóúâêîôûãõçÁÉÍÓÚÂÊÎÔÛÃÕÇ\s]+$", v):
+                raise ValueError("O cargo não deve conter caracteres especiais")
+        return v
+
+    # 3 VALIDAÇÃO CONJUNTA: Se houver indicação, Nome e LinkedIn são obrigatórios e valida o /in/
+    @validator('referred_by_linkedin')
+    def validate_linkedin_and_dependency(cls, v, values):
+        referred_name = values.get('referred_by_name')
+
+        # Se preencheu o nome de quem indicou, o LinkedIn se torna obrigatório
+        if referred_name and not v:
+            raise ValueError("O LinkedIn da indicação é obrigatório quando há uma indicação")
+
+        if v:
+            # Não permite espaços
+            if " " in v:
+                raise ValueError("O link do LinkedIn não deve conter espaços")
+            # Garante que possui o caminho de perfil pessoal (/in/)
+            if "/in/" not in v:
+                raise ValueError("Digite um link válido do LinkedIn (deve conter /in/)")
+                
+        return v
+    
+class VolunteerTechSchema(BaseModel):
+    area: str
+    tech: str
 
 class VolunteerCreate(VolunteerBase):
     # name: str
     # email: str
     # masked_email: Optional[str] = None
+    techs: Optional[List[VolunteerTechSchema]] = []
     is_active: Optional[bool] = True
     jobtitle_id: int
     volunteer_type_id: Optional[int] = None
     squad_id: Optional[int] = None
     vertical_ids: Optional[list[int]] = None
+    
 
 class FeedbackBase(BaseModel):
     content: str
@@ -326,6 +377,8 @@ class VolunteerPublic(VolunteerCommon):
     badges: list[BadgeRead] = []
     mentees: list[VolunteerShort] = []
     mentors: list[VolunteerShort] = []
+    acceptance_date: Optional[datetime] = None
+    
 
     class Config:
         orm_mode = True
@@ -343,6 +396,7 @@ class VolunteerList(VolunteerBase):
     status: Optional[VolunteerStatus] = None
     volunteer_type: Optional[VolunteerType] = None
     squad: Optional['Squad'] = None
+    acceptance_date: Optional[datetime] = None
 
     class Config:
         orm_mode = True

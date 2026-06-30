@@ -34,4 +34,3 @@ uvicorn==0.31.1
 wheel==0.44.0
 pytest
 httpx
-

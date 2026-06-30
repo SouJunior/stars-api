@@ -1,45 +1,30 @@
+version: '3.8'
+
 services:
   stars-api:
     build: .
     container_name: stars-api
     env_file:
       - .env
-
-    # ports:
-    #   - '8000:80'
-    # COMENTADO: Volumes podem esconder o código da imagem se não sincronizados
-    # volumes:
-    #   - ./:/code/
+    ports:
+      - '8000:80'
     restart: on-failure
-    # Em produção, não usamos --reload para evitar overhead e problemas com sistemas de arquivos
     command: uvicorn app.main:app --host 0.0.0.0 --port 80
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    # depends_on:
-    #   mysql_database:
-    #     condition: service_healthy
+    depends_on:
+      - mysql_database
 
-  # mysql_database:
-  #   image: mysql:8.3
-  #   restart: unless-stopped
-  #   command: --default-authentication-plugin=caching_sha2_password
-  #   environment:
-  #     MYSQL_DATABASE: 'db'
-  #     MYSQL_USER: 'mysql'
-  #     MYSQL_PASSWORD: 'mysql'
-  #     MYSQL_ROOT_PASSWORD: 'mysql'
-  #   ports:
-  #     - '3307:3306'
-  #   volumes:
-  #     - mysql_database:/var/lib/mysql
-  #   healthcheck:
-  #     test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
-  #     timeout: 20s
-  #     retries: 10
+#   mysql_database:
+#     image: mysql:8.3
+#     container_name: mysql_stars
+#     restart: unless-stopped
+#     command: --default-authentication-plugin=caching_sha2_password
+#     environment:
+#       MYSQL_DATABASE: 'stars'
+#       MYSQL_ROOT_PASSWORD: 'root' # Define a senha diretamente para o usuário root padrão
+#     ports:
+#       - '3306:3306'
+#     volumes:
+#       - mysql_database:/var/lib/mysql
 
 # volumes:
 #   mysql_database:
