@@ -36,7 +36,7 @@ origins = [
     "http://localhost:5174",
     "http://localhost:8080",
     "https://stars.soujunior.tech",
-    "https://stars-api-production-86a2.up.railway.app",
+    "https://stars-webapp-lac.vercel.app",
 ]
 
 app.add_middleware(
